@@ -1,0 +1,111 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* 폰트 */
+  --font-body: "Pretendard Variable", "Pretendard", system-ui, sans-serif;
+
+  /* 색 토큰 (raw CSS / 그라데이션용 — tailwind.config과 동일) */
+  --ink: #0e3b2e;
+  --forest: #13503d;
+  --pine: #1c6b4f;
+  --green: #2e8b6b;
+  --grass: #4fae83;
+  --lime: #9bd64a;
+  --mint: #bfe9d2;
+  --mint-soft: #d8f2e4;
+  --mist: #ecf6ef;
+  --paper: #f6faf4;
+  --ember: #bd4a2c;
+  --amber: #c9881f;
+}
+
+* {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-feature-settings: "ss01";
+  /* 페이지 전반의 은은한 기후 레이어 분위기 */
+  background-image:
+    radial-gradient(60rem 40rem at 88% -10%, rgba(155, 214, 74, 0.1), transparent 60%),
+    radial-gradient(48rem 38rem at -8% 8%, rgba(46, 139, 107, 0.1), transparent 55%),
+    radial-gradient(40rem 40rem at 50% 120%, rgba(191, 233, 210, 0.35), transparent 60%);
+  background-attachment: fixed;
+}
+
+::selection {
+  background: var(--lime);
+  color: var(--ink);
+}
+
+/* 숫자를 또렷하고 고정폭으로 — 대시보드 큰 숫자에 사용 */
+.tnum {
+  font-family: var(--font-display), var(--font-body);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* 생성 중 스켈레톤 */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(46, 139, 107, 0.08) 25%,
+    rgba(46, 139, 107, 0.16) 37%,
+    rgba(46, 139, 107, 0.08) 63%
+  );
+  background-size: 400% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+/* 가는 점선 구분 */
+.hairline {
+  border-color: rgba(14, 59, 46, 0.1);
+}
+
+/* 커스텀 스크롤바 (관리자 리스트) */
+.scroll-soft::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+.scroll-soft::-webkit-scrollbar-thumb {
+  background: rgba(46, 139, 107, 0.28);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.scroll-soft::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* 스태거 등장 */
+.stagger > * {
+  animation: fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.stagger > *:nth-child(1) { animation-delay: 0.02s; }
+.stagger > *:nth-child(2) { animation-delay: 0.08s; }
+.stagger > *:nth-child(3) { animation-delay: 0.14s; }
+.stagger > *:nth-child(4) { animation-delay: 0.2s; }
+.stagger > *:nth-child(5) { animation-delay: 0.26s; }
+.stagger > *:nth-child(6) { animation-delay: 0.32s; }
+.stagger > *:nth-child(7) { animation-delay: 0.38s; }
+.stagger > *:nth-child(8) { animation-delay: 0.44s; }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
