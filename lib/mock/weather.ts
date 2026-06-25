@@ -18,3 +18,24 @@ export const TODAY_LABEL = "2026년 6월 24일 수요일";
 export const UPDATED_LABEL = "오전 6:00 자동 갱신";
 // 한 줄 날씨 표기
 export const WEATHER_LINE = "최고 37℃ · 체감 40℃ · 폭염경보 · 열대야 지속";
+
+// 기후위험 종류 — 복합 위험 구조. MVP 실제 계산은 폭염(heat)만.
+export type HazardType = "heat" | "cold" | "flood" | "air";
+// 주 위험(가장 큰 위험) + 오늘 동시에 주의할 위험들
+export const PRIMARY_HAZARD: HazardType = "heat";
+export const ACTIVE_HAZARDS: HazardType[] = ["heat", "air"]; // 예: 주 위험 폭염 + 동시 주의 미세먼지
+export const HAZARD_LABELS: Record<HazardType, string> = {
+  heat: "폭염",
+  cold: "한파",
+  flood: "홍수·침수",
+  air: "미세먼지·산불연기",
+};
+// 짧은 라벨(칩용)
+export const HAZARD_SHORT: Record<HazardType, string> = { heat: "폭염", cold: "한파", flood: "침수", air: "미세먼지" };
+// 관리자/소개 화면의 모듈 상태 표시 (활성/대기) — PRIMARY_HAZARD가 활성
+export const HAZARD_MODULES: { key: HazardType; label: string; status: "활성" | "대기" }[] = [
+  { key: "heat", label: "폭염", status: "활성" },
+  { key: "cold", label: "한파", status: "대기" },
+  { key: "flood", label: "침수", status: "대기" },
+  { key: "air", label: "미세먼지", status: "대기" },
+];

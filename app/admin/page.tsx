@@ -2,24 +2,39 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useAppState } from "@/lib/store/AppState";
-import { computeRisk, sortByPriority } from "@/lib/risk/score";
-import { ADMIN_FILTER_KEYS, matchesAdminFilter } from "@/lib/risk/adminFilters";
+import { computeRisk, householdCounts, sortByPriority } from "@/lib/risk/score";
+import { PRIMARY_HAZARD, HAZARD_LABELS, HAZARD_MODULES } from "@/lib/mock/weather";
 import { CountUp } from "@/components/CountUp";
 import { PriorityRow } from "@/components/admin/PriorityRow";
 import { FilterChips, type FilterDef } from "@/components/admin/FilterChips";
 import { DaySummary } from "@/components/admin/DaySummary";
-import type { FilterKey } from "@/lib/types";
+import type { FilterKey, Grade, Household } from "@/lib/types";
 
-function subtitle(key: FilterKey, count: number): string {
-  if (key === "all") return "";
-  const label: Record<Exclude<FilterKey, "all">, string> = {
-    highrisk: "고위험 가구",
-    call: "전화 확인 필요",
-    visit: "방문 필요",
-    support: "지원 검토",
-    done: "완료 처리",
-  };
-  return `${label[key]} ${count}가구를 보고 있습니다.`;
+function matchFilter(h: Household, key: FilterKey, grade: Grade): boolean {
+  if (key === "all") return true;
+  if (key === "highrisk") return grade === "urgent";
+  if (key === "call") return h.status === "전화중" || (grade === "call" && h.status === "대기");
+  if (key === "visit") return h.status === "방문예정";
+  if (key === "support") return !!h.needsSupport;
+  if (key === "done") return h.status === "완료";
+  return false;
+}
+
+function subtitleFor(active: FilterKey, c: ReturnType<typeof householdCounts>): string {
+  switch (active) {
+    case "highrisk":
+      return `우선 확인 대상 ${c.highrisk}가구를 보고 있습니다.`;
+    case "call":
+      return `전화 확인 필요 ${c.call}가구를 보고 있습니다.`;
+    case "visit":
+      return `방문 필요 ${c.visit}가구를 보고 있습니다.`;
+    case "support":
+      return `지원 검토 ${c.support}가구를 보고 있습니다.`;
+    case "done":
+      return "완료 처리된 가구를 보고 있습니다.";
+    default:
+      return "";
+  }
 }
 
 export default function AdminDashboard() {
@@ -33,19 +48,15 @@ export default function AdminDashboard() {
     [households, weather],
   );
 
-  const counts = useMemo(() => {
-    return Object.fromEntries(
-      ADMIN_FILTER_KEYS.map((k) => [k, graded.filter(({ h, grade }) => matchesAdminFilter(h, k, grade)).length]),
-    ) as Record<FilterKey, number>;
-  }, [graded]);
+  const counts = useMemo(() => householdCounts(households, weather), [households, weather]);
 
   const list = useMemo(() => {
-    const filtered = graded.filter(({ h, grade }) => matchesAdminFilter(h, active, grade)).map(({ h }) => h);
+    const filtered = graded.filter(({ h, grade }) => matchFilter(h, active, grade)).map(({ h }) => h);
     return sortByPriority(filtered, weather);
   }, [graded, active, weather]);
 
   const filters: FilterDef[] = [
-    { key: "all", label: "전체", count: counts.all },
+    { key: "all", label: "전체", count: counts.queue },
     { key: "highrisk", label: "고위험", count: counts.highrisk },
     { key: "call", label: "전화 필요", count: counts.call },
     { key: "visit", label: "방문 필요", count: counts.visit },
@@ -53,7 +64,7 @@ export default function AdminDashboard() {
     { key: "done", label: "완료", count: counts.done },
   ];
 
-  const helpCount = households.filter((h) => h.helpRequested).length;
+  const helpCount = counts.help;
 
   function selectFilter(key: FilterKey) {
     setActive(key);
@@ -66,8 +77,10 @@ export default function AdminDashboard() {
       {/* 헤더 */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-3xl font-extrabold tracking-tight text-ink">오늘의 폭염 대응</h1>
-          <p className="mt-1 text-forest/65">{weather.summary}</p>
+          <h1 className="font-display text-3xl font-extrabold tracking-tight text-ink">오늘의 기후위험 대응</h1>
+          <p className="mt-1 text-forest/65">
+            오늘 활성 위험 · <b className="text-forest">{HAZARD_LABELS[PRIMARY_HAZARD]}</b> · {weather.alert} · {weather.highTemp}℃ · 체감 {weather.feelsLike}℃ · 열대야
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {helpCount > 0 && (
@@ -83,6 +96,22 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {/* 기후위험 모듈 상태 — 확장 가능성 표시 */}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {HAZARD_MODULES.map((m) => {
+          const live = m.status === "활성";
+          return (
+            <span
+              key={m.key}
+              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${live ? "bg-forest text-white" : "bg-mist text-forest/50"}`}
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${live ? "bg-lime" : "bg-forest/30"}`} />
+              {m.label} {m.status}
+            </span>
+          );
+        })}
+      </div>
+
       {/* 스탯 그룹 — 비대칭, 클릭 가능 */}
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-12">
         {/* 고위험 가구 → 고위험 필터 */}
@@ -93,7 +122,7 @@ export default function AdminDashboard() {
           }`}
         >
           <div className="absolute -right-8 -top-10 h-32 w-32 rounded-full bg-ember/30 blur-2xl" />
-          <p className="text-sm font-medium text-mint">고위험 가구</p>
+          <p className="text-sm font-medium text-mint">우선 확인 대상</p>
           <div className="mt-2 flex items-end gap-1.5">
             <CountUp to={counts.highrisk} className="tnum text-6xl font-extrabold leading-none" />
             <span className="mb-1 text-lg text-white/60">가구</span>
@@ -109,7 +138,7 @@ export default function AdminDashboard() {
           }`}
         >
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-forest/60">오늘 폭염 위험</p>
+            <p className="text-sm font-medium text-forest/60">오늘 {HAZARD_LABELS[PRIMARY_HAZARD]} 위험</p>
             <span className="rounded-full bg-ember-soft px-3 py-1 text-sm font-bold text-ember-ink">
               {weatherOpen ? "상세 닫기" : "날씨 상세 보기"}
             </span>
@@ -128,7 +157,7 @@ export default function AdminDashboard() {
             <div className="h-full rounded-full" style={{ width: `${weather.score}%`, background: "linear-gradient(90deg,#9BD64A,#C9881F,#BD4A2C)" }} />
           </div>
           <div className="mt-3 flex items-center justify-between text-xs text-forest/45">
-            <span>전체 관리 {counts.all}가구</span>
+            <span>전체 관리 {counts.total}가구 · 오늘 처리 큐 {counts.queue}</span>
             <span>규칙 엔진 실시간 산정</span>
           </div>
         </button>
@@ -145,7 +174,7 @@ export default function AdminDashboard() {
       {weatherOpen && (
         <div className="mt-4 animate-fade-up rounded-xl3 bg-white p-6 ring-1 ring-ink/8 shadow-soft">
           <div className="flex items-center justify-between">
-            <h3 className="font-display text-lg font-bold text-ink">오늘 날씨 · 폭염 상세</h3>
+            <h3 className="font-display text-lg font-bold text-ink">오늘 날씨 · {HAZARD_LABELS[PRIMARY_HAZARD]} 상세</h3>
             <button onClick={() => setWeatherOpen(false)} className="text-forest/40 hover:text-forest">✕</button>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
@@ -168,7 +197,7 @@ export default function AdminDashboard() {
             <h2 className="font-display text-xl font-bold text-ink">우선순위 리스트</h2>
             {active !== "all" && (
               <p className="mt-1 flex items-center gap-2 text-sm text-forest/60">
-                {subtitle(active, counts[active])}
+                {subtitleFor(active, counts)}
                 <button onClick={() => setActive("all")} className="font-semibold text-pine hover:underline">전체 보기</button>
               </p>
             )}

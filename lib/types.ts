@@ -109,9 +109,10 @@ export interface UserProfile {
 }
 
 export interface Metrics {
-  analyzed: number; // 전체 분석 가구
+  analyzed: number; // 전체 위험 분석 (규칙 기반)
   ruleBased: number; // 규칙 기반 처리
-  llmCalls: number; // LLM 호출
+  docRequests: number; // 문서 생성 요청 (= Bedrock 호출 + 캐시 재사용)
+  llmCalls: number; // 실제 Bedrock(LLM) 호출
   noLlmRate: number; // LLM 미사용 처리율 (%)
   cacheReuse: number; // 캐시 재사용
   avgTokens: number; // 평균 출력 토큰

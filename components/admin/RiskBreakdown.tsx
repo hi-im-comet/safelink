@@ -2,8 +2,8 @@ import type { RiskResult } from "@/lib/types";
 
 const ROWS = [
   { key: "weather", label: "날씨 위험도", note: "최고기온·체감·특보·열대야", color: "#C9881F" },
-  { key: "personal", label: "개인 취약도", note: "고령·독거·기저질환·연락 가능", color: "#1C6B4F" },
-  { key: "housing", label: "주거·냉방 위험도", note: "방향·층·노후·냉방 보유·비용", color: "#2E8B6B" },
+  { key: "personal", label: "개인 건강 취약도", note: "고령·독거·기저질환·연락 가능", color: "#1C6B4F" },
+  { key: "housing", label: "집 환경 취약도", note: "방향·층·노후·냉방 보유·비용", color: "#2E8B6B" },
   { key: "care", label: "돌봄 공백·도움요청", note: "경과일·연락 실패·도움 요청", color: "#9BD64A" },
 ] as const;
 

@@ -31,38 +31,39 @@ export const ACTION_PLAN: { block: string; time: string; items: string[] }[] = [
 
 // 내 주거환경 고정 프로필 기본값 (남서향 원룸 시나리오)
 export const PROFILE_DEFAULT: Record<string, string> = {
+  // 공통 집 정보
   household: "원룸",
   direction: "남서향",
   floor: "중층",
   buildingAge: "보통",
+  insulation: "보통",
+  windowSize: "큼",
+  vent: "보통",
+  sealing: "보통",
+  // 생활패턴
+  lifeRhythm: "낮 활동",
   dayStay: "오후 오래",
+  sleepTime: "밤",
+  outdoor: "보통",
+  hotHome: "자주",
+  // 폭염
   ac: "벽걸이",
   fan: "있음",
   curtain: "일반",
   cost: "보통",
-  windowSize: "큼",
-  windowCount: "2개",
-  frontBlock: "없음",
-  vent: "보통",
-  // 생활패턴
-  lifeRhythm: "낮 활동",
-  sleepTime: "밤",
-  outdoor: "보통",
-  hotHome: "자주",
-  // 더위 민감도
   heatSensitivity: "많이 타는 편",
-  prefTemp: "25~26℃",
-  tropicalNight: "잠을 조금 설침",
-  discomfort: "",
-  // 냉방 사용 성향
-  coolingPriority: "절약 우선",
-  acUsableHours: "필요하면 사용",
-  sleepCooling: "부담됨",
-  // 취약도·돌봄
-  elderly: "아니오",
-  chronic: "없음",
-  guardian: "가능",
-  lastCheck: "오늘",
+  // 한파
+  heating: "개별난방",
+  heatingCost: "보통",
+  coldSensitivity: "보통",
+  // 침수
+  lowland: "아니오",
+  drainage: "보통",
+  entryHeight: "비슷함",
+  floodExp: "없음",
+  // 공기질
+  airPurifier: "없음",
+  filterStatus: "보통",
 };
 
 // 보호자 모드 — 부모님 집 정보 기본값 (오래된 아파트 · 독거 고령)
@@ -71,48 +72,48 @@ export const CAREGIVER_PROFILE_DEFAULT: Record<string, string> = {
   direction: "남향",
   floor: "중층",
   buildingAge: "노후",
+  insulation: "약함",
+  windowSize: "보통",
+  vent: "보통",
+  sealing: "틈새 있음",
+  lifeRhythm: "낮 활동",
   dayStay: "종일 재택",
+  sleepTime: "밤",
+  outdoor: "적음",
+  hotHome: "거의 항상",
   ac: "벽걸이",
   fan: "있음",
   curtain: "일반",
   cost: "높음",
-  windowSize: "보통",
-  windowCount: "2개",
-  frontBlock: "없음",
-  vent: "보통",
-  // 생활패턴
-  lifeRhythm: "낮 활동",
-  sleepTime: "밤",
-  outdoor: "적음",
-  hotHome: "거의 항상",
-  // 더위 민감도
   heatSensitivity: "매우 힘든 편",
-  prefTemp: "크게 상관없음",
-  tropicalNight: "잠을 많이 설침",
-  discomfort: "",
-  // 냉방 사용 성향
-  coolingPriority: "절약 우선",
-  acUsableHours: "거의 안 씀",
-  sleepCooling: "거의 안 함",
-  // 취약도·돌봄
-  elderly: "예",
-  chronic: "있음",
-  guardian: "가능",
-  lastCheck: "그 이상",
+  heating: "전기장판 중심",
+  heatingCost: "높음",
+  coldSensitivity: "많이 타는 편",
+  lowland: "아니오",
+  drainage: "보통",
+  entryHeight: "비슷함",
+  floodExp: "없음",
+  airPurifier: "없음",
+  filterStatus: "약함",
 };
 
 // 마이페이지 — 건강/비상/돌봄 정보 기본값 (주거설정이 아니라 여기서 관리)
 export const USER_INFO_DEFAULT: Record<string, string> = {
   // 기본 정보
-  name: "김민지",
-  birth: "1988-05-12",
-  gender: "여",
+  name: "",
+  birth: "",
+  gender: "",
   blood: "확실하지 않아요",
   rh: "확실하지 않아요",
-  phone: "010-0000-0000",
+  phone: "",
+  // 위치 정보 (상세주소는 LLM에 전달하지 않음)
+  regionSi: "인천 미추홀구",
+  regionDong: "",
+  visitAddress: "",
   // 건강 정보 (목록은 쉼표로 join하여 배열처럼 저장)
   chronic: "없음",
   conditions: "",
+  conditionCategory: "",
   disability: "없음",
   disabilityType: "",
   mobility: "가능",
@@ -127,7 +128,6 @@ export const USER_INFO_DEFAULT: Record<string, string> = {
   guardianPhone: "",
   guardian2Phone: "",
   guardianReach: "가능",
-  cohabit: "있음",
   cohabitName: "",
   cohabitPhone: "",
   emergencyPriority: "보호자 → 119",
@@ -157,14 +157,9 @@ export const CAREGIVER_INFO: Record<string, string> = {
 
 // 생년월일 → 고령 여부 (65세 이상)
 export function isElderly(birth?: string): boolean {
-  const age = ageFromBirth(birth);
-  return age !== null && age >= 65;
-}
-
-export function ageFromBirth(birth?: string): number | null {
   const m = (birth ?? "").match(/(19|20)\d{2}/);
-  if (!m) return null;
-  return 2026 - parseInt(m[0], 10);
+  if (!m) return false;
+  return 2026 - parseInt(m[0], 10) >= 65;
 }
 
 // 위험도 핵심 사유 한 줄 (프로필 기반)

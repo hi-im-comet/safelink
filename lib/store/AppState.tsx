@@ -114,7 +114,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
                 helpRequested: true,
                 requestedAt: new Date().toISOString(),
                 helpReasons: payload.reasons,
-                helpTags: source === "guardian" ? ["보호자 요청", ...(payload.tags ?? [])] : payload.tags,
+                helpTags: payload.tags,
                 helpContactTag: payload.contactTag,
                 helpSource: source,
                 recommendedActions:
@@ -190,7 +190,8 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     const llmCalls = BASE_METRICS.llmCalls + live;
     const noLlmRate =
       Math.round(((BASE_METRICS.analyzed - llmCalls) / BASE_METRICS.analyzed) * 1000) / 10;
-    return { ...BASE_METRICS, llmCalls, noLlmRate };
+    const docRequests = llmCalls + BASE_METRICS.cacheReuse; // 호출 + 캐시 재사용
+    return { ...BASE_METRICS, llmCalls, noLlmRate, docRequests };
   }, [state.llmCalls.length]);
 
   const value: AppStateValue = {

@@ -14,14 +14,13 @@ import {
 import { GUARDIAN_TARGET } from "@/lib/mock/guardian";
 import { USER_HOUSEHOLD_ID, GUARDIAN_TARGET_ID } from "@/lib/mock/households";
 
-const NEARBY = [
-  "혼자 있어요",
-  "동거인이 있어요",
-  "보호자에게 연락 가능해요",
-  "보호자에게 연락이 어려워요",
-  "이웃/관리실에 도움 요청 가능해요",
-  "주변에 도움 요청이 어려워요",
-];
+// 연락 대상별로 보여줄 사유 카테고리 (관계없는 아코디언은 숨김)
+const CONTACT_CATEGORIES: Record<string, string[]> = {
+  "119": ["emergency"],
+  gov: ["cooling", "visit", "shelter"],
+  guardian: ["call", "shelter"],
+  worker: ["call", "visit"],
+};
 
 export default function HelpPage() {
   const { caregiverMode, submitHelpRequest, getHousehold, userInfo } = useAppState();
@@ -30,15 +29,23 @@ export default function HelpPage() {
   const categories = caregiverMode ? CAREGIVER_HELP_CATEGORIES : HELP_CATEGORIES;
 
   const [contactKey, setContactKey] = useState("gov");
-  const [openKey, setOpenKey] = useState<string | null>(categories[0].key);
+  const visibleCategories = categories.filter((c) => CONTACT_CATEGORIES[contactKey]?.includes(c.key));
+  const [openKey, setOpenKey] = useState<string | null>(
+    () => categories.find((c) => CONTACT_CATEGORIES.gov.includes(c.key))?.key ?? null,
+  );
   const [selected, setSelected] = useState<string[]>([]);
-  const [nearby, setNearby] = useState("");
-  const [cohabitName, setCohabitName] = useState(userInfo.cohabitName ?? "");
-  const [cohabitPhone, setCohabitPhone] = useState(userInfo.cohabitPhone ?? "");
+  const [alone, setAlone] = useState("");
+  const [helper, setHelper] = useState("");
   const [notifyGuardian, setNotifyGuardian] = useState(false);
   const [sent, setSent] = useState(false);
   const already = !!target?.helpRequested;
   const contact = HELP_CONTACTS.find((c) => c.key === contactKey)!;
+
+  function selectContact(key: string) {
+    setContactKey(key);
+    setSelected([]);
+    setOpenKey(categories.find((c) => CONTACT_CATEGORIES[key]?.includes(c.key))?.key ?? null);
+  }
 
   const emergencyText = `[비상정보] 이름 ${userInfo.name || "-"} · 생년월일 ${userInfo.birth || "-"} · 혈액형 ${userInfo.blood || "-"}${userInfo.rh && userInfo.rh !== "확실하지 않아요" ? " " + userInfo.rh : ""} · 기저질환 ${userInfo.chronic === "있음" ? userInfo.conditions || "있음" : "없음"} · 복용약 ${userInfo.medications || (userInfo.meds === "있음" ? "있음" : "없음")} · 알레르기 ${userInfo.allergy || "-"} · 보호자 ${userInfo.guardianPhone || "-"}`;
 
@@ -57,7 +64,13 @@ export default function HelpPage() {
 
   if (sent || already) {
     const reasons = sent ? selected : target?.helpReasons ?? [];
-    const dest = sent ? contact.label : target?.helpContactTag ?? "담당자 확인";
+    const dest = sent ? contact.label : "";
+    const nearbyText = [
+      alone ? (alone === "예" ? "혼자 있음" : "동거인 있음") : "",
+      helper ? (helper === "예" ? "현장 도움 가능" : "현장 도움 어려움") : "",
+    ]
+      .filter(Boolean)
+      .join(" · ");
     return (
       <div className="stagger flex h-full flex-col">
         <div className="flex flex-1 flex-col items-center justify-center text-center">
@@ -71,14 +84,16 @@ export default function HelpPage() {
             {caregiverMode ? "담당자가 확인 후 필요한 조치를 검토합니다." : "곧 담당 복지사가 확인하고 연락드립니다."}
           </p>
           <div className="mt-5 w-full max-w-xs rounded-2xl bg-white p-4 text-left ring-1 ring-ink/8">
-            <p className="text-sm">
-              <span className="font-semibold text-forest/60">요청 대상: </span>
-              <span className="font-bold text-pine">{dest}</span>
-            </p>
-            {sent && nearby && (
+            {dest && (
+              <p className="text-sm">
+                <span className="font-semibold text-forest/60">요청 대상: </span>
+                <span className="font-bold text-pine">{dest}</span>
+              </p>
+            )}
+            {sent && nearbyText && (
               <p className="mt-1 text-sm">
                 <span className="font-semibold text-forest/60">주변 상황: </span>
-                <span className="text-ink">{nearby}</span>
+                <span className="text-ink">{nearbyText}</span>
               </p>
             )}
             {sent && contact.key === "119" && notifyGuardian && (
@@ -86,7 +101,7 @@ export default function HelpPage() {
             )}
             {reasons.length > 0 && (
               <>
-                <p className="mt-2 text-xs font-bold uppercase tracking-wide text-forest/45">선택한 요청 내용</p>
+                <p className="mt-2 text-xs font-bold uppercase tracking-wide text-forest/45">요청 내용</p>
                 <ul className="mt-1.5 flex flex-col gap-1.5">
                   {reasons.map((r) => (
                     <li key={r} className="flex items-center gap-2 text-sm text-ink">
@@ -96,13 +111,13 @@ export default function HelpPage() {
                 </ul>
               </>
             )}
-            <p className="mt-3 text-xs font-bold uppercase tracking-wide text-forest/45">다음 조치 안내</p>
+            <p className="mt-3 text-xs font-bold uppercase tracking-wide text-forest/45">다음 조치</p>
             <p className="mt-1 text-sm text-forest/70">담당자가 요청 내용을 확인한 뒤 전화 또는 방문 여부를 검토합니다.</p>
           </div>
         </div>
         <div className="flex flex-col gap-2.5 pt-4">
           <Link href="/admin" className="rounded-2xl bg-forest py-3.5 text-center font-bold text-white transition hover:bg-pine">
-            관리자 화면에서 확인
+            관리자 화면에서 확인 (데모)
           </Link>
           <Link href="/user" className="rounded-2xl bg-white py-3 text-center font-semibold text-forest ring-1 ring-ink/10">홈으로</Link>
         </div>
@@ -133,7 +148,7 @@ export default function HelpPage() {
             return (
               <button
                 key={c.key}
-                onClick={() => setContactKey(c.key)}
+                onClick={() => selectContact(c.key)}
                 className={`rounded-2xl p-3 text-left ring-1 transition ${
                   on
                     ? c.urgent
@@ -169,7 +184,6 @@ export default function HelpPage() {
               <span className={`flex h-5 w-5 items-center justify-center rounded-full border-2 text-xs font-bold ${notifyGuardian ? "border-ember bg-ember text-white" : "border-ember/40 text-transparent"}`}>✓</span>
               보호자에게 함께 알림
             </button>
-            <p className="mt-2 text-xs text-ember-ink/75">통화 버튼과 비상정보 복사를 도와드리며, 사용자가 직접 연락합니다.</p>
           </div>
         ) : (
           <p className="mt-2 text-xs text-forest/55">
@@ -184,7 +198,7 @@ export default function HelpPage() {
 
       {/* 사유 카테고리 */}
       <div className="mt-5 flex flex-col gap-2.5">
-        {categories.map((cat) => {
+        {visibleCategories.map((cat) => {
           const open = openKey === cat.key;
           const count = cat.items.filter((it) => selected.includes(it)).length;
           return (
@@ -224,42 +238,10 @@ export default function HelpPage() {
         })}
       </div>
 
-      {/* 주변 도움 가능 여부 */}
-      <section className="mt-5">
-        <h2 className="text-sm font-bold text-pine">지금 주변에 도움을 줄 사람이 있나요?</h2>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {NEARBY.map((o) => {
-            const on = nearby === o;
-            return (
-              <button
-                key={o}
-                onClick={() => setNearby(on ? "" : o)}
-                className={`rounded-full px-3.5 py-2 text-sm font-semibold transition ${
-                  on ? "bg-forest text-white" : "bg-white text-forest/70 ring-1 ring-ink/8 hover:ring-green/30"
-                }`}
-              >
-                {o}
-              </button>
-            );
-          })}
-        </div>
-        {nearby === "동거인이 있어요" && (
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <input
-              value={cohabitName}
-              onChange={(e) => setCohabitName(e.target.value)}
-              placeholder="동거인 이름"
-              className="rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm text-ink outline-none placeholder:text-forest/35 focus:border-green/50"
-            />
-            <input
-              value={cohabitPhone}
-              onChange={(e) => setCohabitPhone(e.target.value)}
-              placeholder="동거인 연락처"
-              className="rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm text-ink outline-none placeholder:text-forest/35 focus:border-green/50"
-            />
-            <p className="col-span-2 text-xs text-forest/45">마이페이지에 저장된 동거인 정보가 있으면 자동으로 불러옵니다.</p>
-          </div>
-        )}
+      {/* 주변 도움 상황 — 두 가지 질문 */}
+      <section className="mt-5 flex flex-col gap-3">
+        <YesNo label="지금 혼자 있나요?" value={alone} onChange={setAlone} />
+        <YesNo label="현장에서 바로 도와줄 사람이 있나요?" value={helper} onChange={setHelper} />
       </section>
 
       <div className="sticky bottom-0 -mx-5 mt-5 border-t border-ink/8 bg-paper-warm/95 px-5 py-3 backdrop-blur-md">
@@ -270,6 +252,27 @@ export default function HelpPage() {
         >
           {selected.length > 0 ? `${contact.label}에 도움 요청 (${selected.length})` : "항목을 선택해주세요"}
         </button>
+      </div>
+    </div>
+  );
+}
+
+function YesNo({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-2xl bg-white px-4 py-3 ring-1 ring-ink/8">
+      <span className="text-sm font-semibold text-ink">{label}</span>
+      <div className="flex gap-1.5">
+        {["예", "아니오"].map((o) => (
+          <button
+            key={o}
+            onClick={() => onChange(value === o ? "" : o)}
+            className={`rounded-full px-3.5 py-1.5 text-sm font-semibold transition ${
+              value === o ? "bg-forest text-white" : "bg-mist text-forest/70 ring-1 ring-ink/8 hover:ring-green/30"
+            }`}
+          >
+            {o}
+          </button>
+        ))}
       </div>
     </div>
   );

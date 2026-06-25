@@ -62,28 +62,44 @@ export function isEmergency(h: Household): boolean {
 
 /**
  * 운영 우선순위 점수.
- * 응급 여부를 최상위로 두고, 그다음 위험도 점수가 실제 순서를 좌우한다.
- * 도움 요청·취약도·연락 공백·방문/지원 상태는 같은 위험도 안에서 보조 가중치로 반영한다.
+ * 단순 최신순이 아니라 응급성 + 위험도 + 요청/취약도/공백을 조합한다.
+ *   응급 +100 · 위험도(그대로) · 도움요청 +20 · 취약 +15 · 연락공백 +10
+ *   · 방문필요 +8 · 지원검토 +5 · 최근요청 +3(작게)
  */
 export function priorityScore(h: Household, weather: TodayWeather): number {
   const risk = computeRisk(h, weather).score;
+  const grade = gradeOf(risk);
   const elderly = /[6-9]0대/.test(h.resident.ageBand);
-  const vulnerability = Number(h.resident.alone) + Number(elderly) + Number(!!h.resident.condition);
-  const careGap = Number(h.lastContactDays >= 7);
-  const visit = Number(h.status === "방문예정");
-  const support = Number(h.status === "지원검토" || !!h.needsSupport);
-  const recentRequest = h.requestedAt ? 1 : 0;
+  const vulnerable = h.resident.alone || elderly || !!h.resident.condition;
+  const needsCall = h.status === "전화중" || (grade === "call" && h.status === "대기");
 
-  return (
-    Number(isEmergency(h)) * 1_000_000 +
-    risk * 1_000 +
-    Number(!!h.helpRequested) * 100 +
-    vulnerability * 20 +
-    careGap * 10 +
-    visit * 8 +
-    support * 5 +
-    recentRequest
-  );
+  // 정렬 기준: 응급 → 위험도 → 도움 요청 → 취약도 → 연락 공백 → 방문 → 전화 → 지원 → 최근 요청
+  let s = risk;
+  if (isEmergency(h)) s += 100;
+  if (h.helpRequested) s += 20;
+  if (vulnerable) s += 15;
+  if (h.lastContactDays >= 7) s += 10;
+  if (h.status === "방문예정") s += 8;
+  if (needsCall) s += 6;
+  if (h.needsSupport) s += 5;
+  if (h.helpRequested) s += 3; // 최근 요청 가산은 작게 — 단독으로 앞지르지 못하게
+  return s;
+}
+
+/** KPI · 필터 · 운영 브리핑이 공유하는 단일 counts 객체 (오늘 처리 큐 기준) */
+export function householdCounts(households: Household[], weather: TodayWeather) {
+  const graded = households.map((h) => ({ h, grade: computeRisk(h, weather).grade }));
+  const c = (fn: (x: { h: Household; grade: Grade }) => boolean) => graded.filter(fn).length;
+  return {
+    total: 240, // 전체 관리 가구 (상수)
+    queue: households.length, // 오늘 처리 큐
+    highrisk: c(({ grade }) => grade === "urgent"),
+    call: c(({ h, grade }) => h.status === "전화중" || (grade === "call" && h.status === "대기")),
+    visit: c(({ h }) => h.status === "방문예정"),
+    support: c(({ h }) => !!h.needsSupport),
+    done: c(({ h }) => h.status === "완료"),
+    help: c(({ h }) => !!h.helpRequested),
+  };
 }
 
 /**

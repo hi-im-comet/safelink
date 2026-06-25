@@ -7,7 +7,7 @@ import { computeProfileRisk, buildPlan } from "@/lib/risk/profileRisk";
 import { RiskDial } from "@/components/user/RiskDial";
 import { RiskDetails } from "@/components/user/RiskDetails";
 import { USER_HOUSEHOLD_ID, GUARDIAN_TARGET_ID } from "@/lib/mock/households";
-import { LOCATION, TODAY_LABEL, UPDATED_LABEL } from "@/lib/mock/weather";
+import { ACTIVE_HAZARDS, HAZARD_LABELS, HAZARD_SHORT, LOCATION, PRIMARY_HAZARD, TODAY_LABEL, UPDATED_LABEL } from "@/lib/mock/weather";
 import { CAREGIVER_INFO, EXPECTED_EFFECTS } from "@/lib/mock/user";
 import { GUARDIAN_TARGET, SHELTERS } from "@/lib/mock/guardian";
 import type { Grade } from "@/lib/types";
@@ -39,7 +39,13 @@ export default function UserHome() {
           </div>
           <span className="shrink-0 rounded-full bg-white/15 px-2.5 py-1 text-xs font-semibold text-mint">{UPDATED_LABEL}</span>
         </div>
-        <div className="mt-4 flex items-end gap-3">
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <span className="rounded-full bg-white/15 px-2.5 py-1 text-xs font-bold text-lime">주 위험 · {HAZARD_LABELS[PRIMARY_HAZARD]}</span>
+          {ACTIVE_HAZARDS.filter((h) => h !== PRIMARY_HAZARD).map((h) => (
+            <span key={h} className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-mint">동시 주의 · {HAZARD_SHORT[h]}</span>
+          ))}
+        </div>
+        <div className="mt-3 flex items-end gap-3">
           <span className="tnum text-4xl font-extrabold leading-none">{weather.highTemp}°</span>
           <div className="mb-0.5 text-sm leading-snug text-white/80">
             <p>체감 {weather.feelsLike}° · 습도 {weather.humidity}% · 열대야</p>
@@ -48,7 +54,7 @@ export default function UserHome() {
         </div>
       </section>
 
-      <h1 className="font-display text-xl font-extrabold text-ink">{caregiverMode ? "부모님 폭염 안전" : "내 폭염 안전"}</h1>
+      <h1 className="font-display text-xl font-extrabold text-ink">{caregiverMode ? "부모님 기후 안전" : "오늘의 기후 안전"}</h1>
 
       {/* 위험도 카드 */}
       {caregiverMode ? (
@@ -121,7 +127,12 @@ export default function UserHome() {
 
       {/* 오늘의 행동계획 — 위험 요인과 연결, 시간 블록별 */}
       <section>
-        <h2 className="mb-2 font-display text-lg font-bold text-ink">{caregiverMode ? "오늘 부모님께 할 일" : "오늘의 행동계획"}</h2>
+        <h2 className="mb-2 font-display text-lg font-bold text-ink">{caregiverMode ? "오늘 부모님께 할 일" : "오늘의 안전 행동"}</h2>
+        {ACTIVE_HAZARDS.includes("air") && (
+          <p className="mb-2 rounded-xl bg-amber-soft px-3 py-2 text-xs font-medium text-amber-ink">
+            동시 주의 · 미세먼지가 높은 시간대에는 장시간 환기 대신 짧게 환기하세요.
+          </p>
+        )}
         <div className="flex flex-col gap-3">
           {plan.map((blk, bi) => (
             <div key={bi} className="rounded-2xl bg-white p-3.5 ring-1 ring-ink/8">

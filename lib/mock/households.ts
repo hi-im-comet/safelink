@@ -1,13 +1,22 @@
 import type { Household } from "@/lib/types";
 
+// 전체 현황 헤드라인 수치 (PDF 기준) — 상단 큰 스탯카드에 그대로 노출.
+export const SUMMARY = {
+  total: 240, // 전체 관리 가구
+  highRisk: 12, // 고위험 가구
+  callNeeded: 18, // 전화 확인 필요
+  visitNeeded: 5, // 방문 필요
+  supportNeeded: 7, // 지원 검토 필요
+} as const;
+
 // 사용자 모바일 앱과 연결된 가구 ID (도움 요청 데모의 주인공).
 export const USER_HOUSEHOLD_ID = "H-104";
 
 // 보호자 앱이 지켜보는 부모님 가구 ID.
 export const GUARDIAN_TARGET_ID = "H-205";
 
-// 화면에 보이는 "오늘 우선 처리 큐".
-// 점수는 규칙 엔진(날씨·가중합 35/25/25/15)에 의해 계산되며,
+// 화면에 보이는 "오늘 우선 처리 큐". 240가구 전체가 아니라 상위 슬라이스다.
+// 점수는 규칙 엔진(날씨90·가중합 35/25/25/15)에 의해 계산되며,
 // H-001은 정확히 94점이 되도록 구성요소를 보정했다.
 export const HOUSEHOLDS: Household[] = [
   {

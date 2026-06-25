@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { ClimateLayers } from "@/components/ClimateLayers";
-import { LlmFloatingBadge } from "@/components/LlmFloatingBadge";
+import { TODAY_WEATHER, HAZARD_LABELS, PRIMARY_HAZARD } from "@/lib/mock/weather";
 
 export default function LandingPage() {
   return (
@@ -26,10 +26,10 @@ export default function LandingPage() {
 
           {/* 온도 정보 카드 (유지) */}
           <div className="absolute bottom-5 left-5 rounded-2xl bg-white/85 px-5 py-3.5 backdrop-blur-md">
-            <p className="text-xs font-semibold uppercase tracking-wide text-green">오늘 · 폭염경보</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-green">오늘의 기후위험 · {HAZARD_LABELS[PRIMARY_HAZARD]}</p>
             <div className="mt-1 flex items-baseline gap-3">
-              <span className="tnum text-4xl font-extrabold text-ink">37°</span>
-              <span className="text-sm text-forest/70">체감 40° · 열대야 지속</span>
+              <span className="tnum text-4xl font-extrabold text-ink">{TODAY_WEATHER.highTemp}°</span>
+              <span className="text-sm text-forest/70">체감 {TODAY_WEATHER.feelsLike}° · {TODAY_WEATHER.alert}</span>
             </div>
           </div>
         </div>
@@ -46,7 +46,7 @@ export default function LandingPage() {
           <EntryCard
             href="/user"
             variant="white"
-            tag="내 집 또는 등록한 가족의 집 기준으로 오늘의 폭염 행동을 확인합니다"
+            tag="내 집 또는 등록한 가족의 집 기준으로 오늘의 기후위험과 안전 행동을 확인합니다"
             title="사용자 앱"
             cta="사용자 앱 열기"
           />
@@ -59,7 +59,7 @@ export default function LandingPage() {
         >
           <span>
             <span className="font-display text-lg font-bold text-ink">서비스 소개</span>
-            <span className="mt-0.5 block text-sm text-forest/60">작동 방식 · 저전력 AI 전략 · 확장 가능성</span>
+            <span className="mt-0.5 block text-sm text-forest/60">작동 방식 · 저전력 AI 전략 · 기후재난 확장성</span>
           </span>
           <span className="inline-flex w-fit shrink-0 items-center gap-1.5 rounded-full bg-white/70 px-4 py-2 text-sm font-bold text-pine ring-1 ring-green/15 transition group-hover:gap-2.5">
             서비스 소개 보기 <Arrow />
@@ -69,9 +69,8 @@ export default function LandingPage() {
 
       {/* 짧은 보조 설명 1줄 */}
       <footer className="mt-8 text-center text-sm text-forest/45">
-        폭염 취약가구와 일반 시민을 위한 저전력 기후안전 에이전트
+        기후취약가구와 일반 시민을 위한 저전력 기후안전 에이전트
       </footer>
-      <LlmFloatingBadge />
     </main>
   );
 }

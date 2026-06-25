@@ -5,6 +5,7 @@ import type { Metrics } from "@/lib/types";
 export const BASE_METRICS: Metrics = {
   analyzed: 240,
   ruleBased: 240,
+  docRequests: 26, // 문서 생성 요청 = Bedrock 호출 19 + 캐시 재사용 7
   llmCalls: 19,
   noLlmRate: 92.1,
   cacheReuse: 7,

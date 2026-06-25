@@ -5,15 +5,11 @@ import { useState } from "react";
 export function CopyButton({
   text,
   label = "복사",
-  doneLabel = "복사됨",
   className = "",
-  onCopied,
 }: {
   text: string;
   label?: string;
-  doneLabel?: string;
   className?: string;
-  onCopied?: () => void;
 }) {
   const [done, setDone] = useState(false);
 
@@ -29,7 +25,6 @@ export function CopyButton({
       document.execCommand("copy");
       ta.remove();
     }
-    onCopied?.();
     setDone(true);
     setTimeout(() => setDone(false), 1600);
   }
@@ -42,7 +37,7 @@ export function CopyButton({
       <span
         className={`h-1.5 w-1.5 rounded-full transition ${done ? "bg-green" : "bg-ink/30"}`}
       />
-      {done ? doneLabel : label}
+      {done ? "복사됨" : label}
     </button>
   );
 }

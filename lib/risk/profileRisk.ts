@@ -4,7 +4,7 @@
 import type { Grade, TodayWeather } from "@/lib/types";
 import { gradeOf } from "@/lib/risk/score";
 import { CAREGIVER_REASON } from "@/lib/mock/guardian";
-import { ageFromBirth, isElderly } from "@/lib/mock/user";
+import { isElderly } from "@/lib/mock/user";
 
 type P = Record<string, string>;
 const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
@@ -28,8 +28,7 @@ function housingScore(p: P): number {
   else if (p.buildingAge === "보통") s += 3;
   if (p.windowSize === "큼") s += 8;
   else if (p.windowSize === "보통") s += 3;
-  if (p.frontBlock === "없음") s += 6;
-  else s -= 4; // 가까운 건물/나무로 일부 가림 → 감소
+  if (p.insulation === "약함") s += 4; // 단열 약하면 여름에도 불리
   if (p.vent === "잘 안 됨") s += 8;
   else if (p.vent === "보통") s += 3;
   else s -= 4;
@@ -100,37 +99,36 @@ function acLabel(ac?: string): string {
 }
 
 function buildChips(p: P, info: P, w: TodayWeather, caregiver: boolean): string[] {
-  const age = ageFromBirth(info.birth);
   const chips: string[] = [`체감 ${w.feelsLike}℃`, `습도 ${w.humidity}%`, w.alert];
   if (p.direction) chips.push(p.direction);
   if (p.floor === "최상층" || p.floor === "반지하") chips.push(p.floor);
   if (p.buildingAge === "노후") chips.push("노후 주택");
-  if (p.windowSize) chips.push(`창문 ${p.windowSize}`);
-  if (p.vent) chips.push(`환기 ${p.vent}`);
+  if (p.windowSize === "큼") chips.push("창문 큼");
+  if (p.vent === "잘 안 됨") chips.push("환기 약함");
   chips.push(acLabel(p.ac));
-  if (p.cost) chips.push(`냉방비 ${p.cost}`);
+  if (p.fan === "없음") chips.push("선풍기 없음");
+  if (p.cost && p.cost !== "낮음") chips.push(`냉방비 ${p.cost}`);
   if (p.dayStay === "오후 오래" || p.dayStay === "종일 재택") chips.push("오후 재택");
-  else if (p.dayStay) chips.push(p.dayStay);
   if (p.heatSensitivity === "많이 타는 편" || p.heatSensitivity === "매우 힘든 편") chips.push("더위 민감도 높음");
-  else if (p.heatSensitivity) chips.push(`더위 민감도 ${p.heatSensitivity}`);
-  if (p.coolingPriority === "절약 우선") chips.push("절약 우선");
-  // 건강·돌봄 (마이페이지)
-  if (age !== null) chips.push(`나이 ${age}세`);
   if (info.alone === "예") chips.push("혼자 거주");
-  if (info.chronic === "있음" || has(info.conditions)) chips.push("기저질환 있음");
-  if (info.disability === "있음" || has(info.disabilityType)) chips.push("장애 있음");
-  if (info.mobility === "불편") chips.push("이동 불편");
-  if (info.meds === "있음" || has(info.medications)) chips.push("복용약 있음");
-  if (info.guardianReach === "가능") chips.push("보호자 연락 가능");
-  else if (info.guardianReach === "어려움") chips.push("보호자 연락 어려움");
-  return chips;
+  // 건강·돌봄 — 구체적 나이·질환명은 노출하지 않고 요약 칩으로만 (상세는 마이페이지)
+  const healthVuln =
+    isElderly(info.birth) ||
+    info.chronic === "있음" ||
+    has(info.conditions) ||
+    info.disability === "있음" ||
+    has(info.disabilityType) ||
+    info.mobility === "불편" ||
+    has(info.medications);
+  chips.push(healthVuln ? "건강 취약요인 있음" : "개인 취약도 낮음");
+  return chips.slice(0, caregiver ? 16 : 12);
 }
 
 function buildReason(p: P, info: P, caregiver: boolean): string {
   if (caregiver) return CAREGIVER_REASON;
-  const reflected = [`${p.direction} ${p.household}`];
-  if (p.dayStay === "종일 재택" || p.dayStay === "오후 오래") reflected.push("오후 재택");
-  if (p.heatSensitivity === "많이 타는 편" || p.heatSensitivity === "매우 힘든 편") reflected.push("더위 민감도 높음");
+  const housing = [`${p.direction} ${p.household}`];
+  if (p.dayStay === "종일 재택" || p.dayStay === "오후 오래") housing.push("오후 재택");
+  if (p.heatSensitivity === "많이 타는 편" || p.heatSensitivity === "매우 힘든 편") housing.push("더위 민감도 높음");
 
   const health: string[] = [];
   if (isElderly(info.birth)) health.push("고령");
@@ -139,10 +137,10 @@ function buildReason(p: P, info: P, caregiver: boolean): string {
   if (info.mobility === "불편") health.push("이동 불편");
   if (info.alone === "예") health.push("혼자 거주");
 
-  const reflectedWithHealth = [...reflected, ...health.map((h) => `${h} 정보`)];
+  const base = housing.join(", ");
   return health.length
-    ? `${reflectedWithHealth.slice(0, 5).join(", ")}를 함께 반영해 오후 1시~4시 실내 과열과 건강 위험을 계산했습니다.`
-    : `${reflected.join(", ")} 조건을 반영해 오후 1시~4시 실내 과열 가능성을 계산했습니다.`;
+    ? `${base}에 더해 ${health.slice(0, 2).join("·")} 정보가 있어 폭염 시 건강 위험을 함께 고려했습니다.`
+    : `${base} 조건 때문에 오후 1시~4시 실내 과열 가능성이 큽니다.`;
 }
 
 export interface ProfileRisk {
@@ -153,6 +151,17 @@ export interface ProfileRisk {
   reason: string;
 }
 
+/**
+ * 오늘 위험도 = 날씨 위험도 + 집 환경 취약도 + 생활패턴 + 건강/돌봄 + 활성 기후위험별 가중치
+ *
+ * 활성 기후위험(activeHazard)에 따라 반영 요소가 달라지도록 확장 가능한 구조:
+ *  - heat(폭염):  체감온도 · 습도 · 방향 · 창문 · 냉방 접근성 · 더위 민감도
+ *  - cold(한파):  체감온도 · 단열 · 난방 방식 · 틈새 바람 · 고령/질환
+ *  - flood(침수): 강수량 · 반지하/저지대 · 배수 상태 · 출입구 높이 · 이동 불편
+ *  - air(공기질): 미세먼지 농도 · 창문 밀폐 · 공기청정기 · 호흡기 질환
+ *
+ * MVP의 실제 계산은 heat(폭염)만 구현한다. (집 환경의 한파/침수/공기질 입력값은 저장만 됨)
+ */
 export function computeProfileRisk(p: P, info: P, w: TodayWeather, caregiver: boolean): ProfileRisk {
   const weather = weatherScore(w);
   const housing = housingScore(p);
@@ -166,7 +175,7 @@ export function computeProfileRisk(p: P, info: P, w: TodayWeather, caregiver: bo
     score = clamp(weather * 0.3 + housing * 0.3 + care * 0.3 + cooling * 0.1);
     breakdown = [
       { label: "날씨 위험도", value: weather },
-      { label: "주거·냉방 위험도", value: housing },
+      { label: "집 환경 취약도", value: housing },
       { label: "돌봄 공백", value: care },
       { label: "냉방 접근성", value: cooling },
     ];
@@ -174,7 +183,7 @@ export function computeProfileRisk(p: P, info: P, w: TodayWeather, caregiver: bo
     score = clamp(weather * 0.3 + housing * 0.35 + lifestyle * 0.2 + care * 0.15);
     breakdown = [
       { label: "날씨 위험도", value: weather },
-      { label: "주거·냉방 위험도", value: housing },
+      { label: "집 환경 취약도", value: housing },
       { label: "생활패턴 위험도", value: lifestyle },
       { label: "건강·돌봄", value: care },
     ];
@@ -183,7 +192,10 @@ export function computeProfileRisk(p: P, info: P, w: TodayWeather, caregiver: bo
   return { score, grade: gradeOf(score), breakdown, chips: buildChips(p, info, w, caregiver), reason: buildReason(p, info, caregiver) };
 }
 
-// 위험 요인과 연결된 시간대별 행동계획
+// 위험 요인과 연결된 시간대별 행동계획.
+// 복합 위험(activeHazards)이 충돌하면 우선순위로 조정한다. 예) 폭염은 환기를 권장하지만
+// 미세먼지가 높으면 장시간 환기를 막아야 하므로 "짧은 환기"로 대체한다.
+// (MVP는 주 위험 폭염 기준으로 생성하고, 동시 위험은 홈에서 주의 문구로 안내)
 export function buildPlan(
   p: P,
   w: TodayWeather,

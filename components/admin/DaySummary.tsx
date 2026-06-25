@@ -3,14 +3,15 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { useAppState } from "@/lib/store/AppState";
-import { getAdminCounts } from "@/lib/risk/adminFilters";
+import { householdCounts } from "@/lib/risk/score";
+import { HAZARD_LABELS, PRIMARY_HAZARD } from "@/lib/mock/weather";
 import { CopyButton } from "@/components/CopyButton";
 
 const PRIORITIES = [
   "도움 요청 가구 즉시 확인",
   "고위험 독거 가구 전화 확인",
   "방문 필요 가구 담당자 배정",
-  "냉방비·냉방용품 지원 검토",
+  "냉난방비·지원용품 검토",
   "무더위쉼터 안내 대상 확인",
 ];
 
@@ -19,16 +20,16 @@ export function DaySummary() {
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<"idle" | "loading" | "done">("idle");
 
-  const counts = getAdminCounts(households, weather);
-  const helpCount = households.filter((h) => h.helpRequested).length;
-  const text = `오늘 폭염경보로 고위험 가구 ${counts.highrisk}가구가 우선 확인 대상으로 분류되었습니다. 도움 요청 ${helpCount}건은 요청 유형과 위험도를 함께 반영해 배치되었고, 전화 확인 ${counts.call}건, 방문 확인 ${counts.visit}건, 지원 검토 ${counts.support}건이 남아 있습니다. 오전 중 응급 확인 필요 가구를 먼저 확인하고, 오후 피크 시간 전 방문 필요 가구를 담당자에게 배정하는 것이 좋습니다.`;
+  const c = householdCounts(households, weather);
+  const hazard = HAZARD_LABELS[PRIMARY_HAZARD];
+  const text = `오늘 ${hazard} 상황(${weather.alert})에서 우선 확인 대상 ${c.highrisk}가구를 분류했습니다. 도움 요청 ${c.help}건은 최상단에 배치되었고, 전화 확인 ${c.call}건, 방문 확인 ${c.visit}건, 지원 검토 ${c.support}건이 남아 있습니다. 오전 중 도움 요청 가구를 먼저 확인하고, 오후 피크 시간 전 방문 필요 가구를 담당자에게 배정하는 것이 좋습니다.`;
 
   const stats: [string, string][] = [
-    ["고위험 가구", `${counts.highrisk}`],
-    ["도움 요청", `${helpCount}`],
-    ["전화 확인", `${counts.call}`],
-    ["방문 확인", `${counts.visit}`],
-    ["지원 검토", `${counts.support}`],
+    ["우선 확인 대상", `${c.highrisk}`],
+    ["도움 요청", `${c.help}`],
+    ["전화 확인", `${c.call}`],
+    ["방문 확인", `${c.visit}`],
+    ["지원 검토", `${c.support}`],
   ];
 
   const copyText = `${text}\n\n[운영 우선순위]\n${PRIORITIES.map((p, i) => `${i + 1}. ${p}`).join("\n")}`;
@@ -53,7 +54,7 @@ export function DaySummary() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm" onClick={() => setOpen(false)}>
           <div className="w-full max-w-lg animate-fade-up rounded-xl3 bg-white p-6 shadow-lift" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
-              <h2 className="font-display text-xl font-extrabold text-ink">오늘 폭염 운영 브리핑</h2>
+              <h2 className="font-display text-xl font-extrabold text-ink">오늘 기후위험 운영 브리핑</h2>
               <button onClick={() => setOpen(false)} className="text-forest/40 hover:text-forest">✕</button>
             </div>
 

@@ -1,18 +1,12 @@
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
-import { LlmFloatingBadge } from "@/components/LlmFloatingBadge";
-import {
-  AI_STRUCTURE,
-  BASE_METRICS,
-  EXPANSION_MODULES,
-  LOW_POWER_PRINCIPLES,
-} from "@/lib/mock/metrics";
+import { AI_STRUCTURE, BASE_METRICS, EXPANSION_MODULES } from "@/lib/mock/metrics";
 
 const DAILY = [
-  { who: "사용자", text: "주거환경을 한 번 등록합니다." },
-  { who: "시스템", text: "매일 오전 6시 날씨·폭염특보를 반영해 오늘의 행동계획을 갱신합니다." },
+  { who: "사용자", text: "집 환경을 한 번 등록합니다." },
+  { who: "시스템", text: "매일 오전 6시 날씨·기후특보를 반영해 오늘의 기후위험과 행동을 갱신합니다." },
   { who: "보호자", text: "부모님·가족의 안부 확인이 필요한지 봅니다." },
-  { who: "관리자", text: "긴급 요청과 고위험 가구를 우선순위로 봅니다." },
+  { who: "관리자", text: "긴급 요청과 우선 확인 대상을 운영 우선순위로 봅니다." },
 ];
 
 const TIER_STYLE: Record<string, string> = {
@@ -35,14 +29,26 @@ export default function AboutPage() {
           CoolLink AI가 하는 일
         </h1>
         <p className="mt-4 max-w-2xl text-[1.05rem] leading-relaxed text-forest/75">
-          집의 방향, 창문, 냉방 환경, 생활패턴, 돌봄 공백을 함께 보고
-          <b className="text-forest"> 오늘 필요한 행동</b>과 <b className="text-forest">우선 지원 대상</b>을 정리합니다.
+          CoolLink AI는 날씨만 보는 서비스가 아니라, 집의 구조와 생활패턴, 건강정보를 함께 보고
+          <b className="text-forest"> 오늘의 기후위험</b>을 판단합니다.
         </p>
+      </section>
+
+      {/* 활성 위험 선택 과정 */}
+      <section className="mt-8">
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          {["날씨·특보 수집", "활성 위험 선택", "코드 기반 점수", "맞춤 행동 생성"].map((step, i) => (
+            <div key={step} className="flex items-center gap-2">
+              {i > 0 && <span className="text-forest/30">→</span>}
+              <span className="rounded-full bg-mint-soft px-3 py-1.5 font-semibold text-forest">{step}</span>
+            </div>
+          ))}
+        </div>
       </section>
 
       {/* 2. 매일 아침 갱신 */}
       <section className="mt-14">
-        <h2 className="font-display text-xl font-bold text-ink sm:text-2xl">매일 아침, 오늘의 폭염 대응을 다시 계산합니다</h2>
+        <h2 className="font-display text-xl font-bold text-ink sm:text-2xl">매일 아침 다시 계산되는 기후위험</h2>
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           {DAILY.map((d) => (
             <div key={d.who} className="flex items-start gap-3 rounded-2xl bg-white p-5 ring-1 ring-ink/8">
@@ -67,32 +73,26 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* 4. 가볍게 운영 */}
-      <section className="mt-14 grid gap-5 lg:grid-cols-[1.2fr_1fr]">
-        <div className="rounded-xl3 bg-white p-6 ring-1 ring-ink/8">
-          <h2 className="font-display text-xl font-bold text-ink sm:text-2xl">가볍게 운영합니다</h2>
-          <ul className="mt-4 flex flex-col gap-2.5">
-            {LOW_POWER_PRINCIPLES.map((p) => (
-              <li key={p} className="flex items-start gap-2.5 text-forest/75">
-                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-green" />
-                {p}
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="flex flex-col justify-between rounded-xl3 bg-forest p-6 text-white">
+      {/* 4. AI 운영 효율 (요약) */}
+      <section className="mt-5 rounded-xl3 bg-forest p-6 text-white">
+        <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-sm font-medium text-mint">오늘 LLM 사용</p>
-            <div className="mt-3 flex items-end gap-2">
+            <p className="text-sm font-medium text-mint">오늘 AI 운영 효율</p>
+            <div className="mt-2 flex items-end gap-2">
               <span className="tnum text-5xl font-extrabold">{BASE_METRICS.noLlmRate}</span>
-              <span className="mb-1 text-white/70">% 미사용</span>
+              <span className="mb-1 text-white/70">% LLM 미사용 처리</span>
             </div>
-            <p className="mt-2 text-sm text-white/65">규칙 {BASE_METRICS.ruleBased}건 · LLM {BASE_METRICS.llmCalls}건</p>
           </div>
-          <p className="mt-5 rounded-full bg-white/12 px-4 py-2 text-sm font-medium text-mint">
-            관리자 화면 우측 하단 ‘AI 절감’ 버튼에서 실시간 확인
-          </p>
+          <div className="flex flex-wrap gap-5 text-sm">
+            <div><div className="tnum text-2xl font-bold text-lime">{BASE_METRICS.analyzed}</div><div className="text-white/60">전체 위험 분석</div></div>
+            <div><div className="tnum text-2xl font-bold">{BASE_METRICS.docRequests}</div><div className="text-white/60">문서 생성 요청</div></div>
+            <div><div className="tnum text-2xl font-bold">{BASE_METRICS.llmCalls}</div><div className="text-white/60">Bedrock 호출</div></div>
+            <div><div className="tnum text-2xl font-bold">{BASE_METRICS.cacheReuse}</div><div className="text-white/60">캐시 재사용</div></div>
+          </div>
         </div>
+        <p className="mt-4 text-sm text-white/65">
+          반복 계산은 코드가, 문서는 캐시·템플릿을 먼저 쓰고 꼭 필요할 때만 LLM을 호출합니다. 개인정보는 LLM에 직접 전달하지 않습니다.
+        </p>
       </section>
 
       {/* 5. 확장 */}
@@ -130,7 +130,6 @@ export default function AboutPage() {
           <span className="text-pine transition group-hover:translate-x-0.5">→</span>
         </Link>
       </section>
-      <LlmFloatingBadge />
     </main>
   );
 }

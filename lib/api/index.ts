@@ -3,7 +3,7 @@
 // 백엔드가 붙으면 이 파일의 본문만 fetch(...) 로 바꾸면 되고,
 // 화면 컴포넌트는 손대지 않는다.
 import type { Household } from "@/lib/types";
-import { HOUSEHOLDS } from "@/lib/mock/households";
+import { HOUSEHOLDS, SUMMARY } from "@/lib/mock/households";
 import { TODAY_WEATHER } from "@/lib/mock/weather";
 import { BASE_METRICS } from "@/lib/mock/metrics";
 import {
@@ -26,6 +26,11 @@ export async function fetchHouseholds(): Promise<Household[]> {
 export async function fetchHousehold(id: string): Promise<Household | undefined> {
   await delay(80);
   return HOUSEHOLDS.find((h) => h.id === id);
+}
+
+export async function fetchSummary() {
+  await delay(60);
+  return SUMMARY;
 }
 
 export async function fetchWeather() {

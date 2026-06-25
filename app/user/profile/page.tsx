@@ -18,29 +18,16 @@ interface Section {
 
 const SECTIONS: Section[] = [
   {
-    title: "기본 주거환경",
+    title: "공통 집 정보",
     fields: [
-      { key: "household", label: "거주 형태", options: ["원룸", "오피스텔", "아파트", "단독주택", "반지하", "다세대"] },
+      { key: "household", label: "주택 형태", options: ["원룸", "오피스텔", "아파트", "단독주택", "다세대"] },
       { key: "direction", label: "방향", options: ["북향", "북동향", "동향", "남동향", "남향", "남서향", "서향", "북서향"] },
-      { key: "floor", label: "층수", options: ["반지하", "저층", "중층", "고층", "최상층"] },
+      { key: "floor", label: "층·위치", options: ["반지하", "1층", "저층", "중층", "고층", "최상층"] },
       { key: "buildingAge", label: "건물 노후도", options: ["신축", "보통", "노후"] },
-    ],
-  },
-  {
-    title: "냉방 · 차광",
-    fields: [
-      { key: "ac", label: "에어컨", options: ["없음", "벽걸이", "스탠드", "둘 다"] },
-      { key: "fan", label: "선풍기", options: ["없음", "있음"] },
-      { key: "curtain", label: "커튼 · 블라인드", options: ["없음", "일반", "암막"] },
-    ],
-  },
-  {
-    title: "창문 · 환기",
-    fields: [
-      { key: "windowSize", label: "주 창문 크기", options: ["작음", "보통", "큼"] },
-      { key: "windowCount", label: "창문 개수", options: ["1개", "2개", "3개 이상"] },
-      { key: "frontBlock", label: "앞 건물 가림", options: ["없음", "가까운 건물", "나무 · 차양"] },
-      { key: "vent", label: "환기", options: ["잘 됨", "보통", "잘 안 됨"] },
+      { key: "insulation", label: "단열", options: ["좋음", "보통", "약함"] },
+      { key: "windowSize", label: "창문 크기", options: ["작음", "보통", "큼"] },
+      { key: "vent", label: "환기 가능성", options: ["잘 됨", "보통", "잘 안 됨"] },
+      { key: "sealing", label: "창호 밀폐성", options: ["잘 막힘", "보통", "틈새 있음"] },
     ],
   },
   {
@@ -54,21 +41,37 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: "더위 민감도",
+    title: "폭염",
     fields: [
-      { key: "heatSensitivity", label: "더위를 느끼는 정도", options: ["덜 타는 편", "보통", "많이 타는 편", "매우 힘든 편"] },
-      { key: "prefTemp", label: "선호 실내 온도", options: ["24℃ 이하", "25~26℃", "27~28℃", "크게 상관없음"] },
-      { key: "tropicalNight", label: "열대야 영향", options: ["괜찮은 편", "잠을 조금 설침", "잠을 많이 설침"] },
-      { key: "discomfort", label: "더울 때 자주 겪는 불편 (복수 선택)", options: ["없음", "두통", "어지러움", "땀/탈수 느낌", "피로감"], multi: true },
+      { key: "ac", label: "에어컨", options: ["없음", "벽걸이", "스탠드", "둘 다"] },
+      { key: "fan", label: "선풍기", options: ["없음", "있음"] },
+      { key: "curtain", label: "커튼·블라인드(차광)", options: ["없음", "일반", "암막"] },
+      { key: "cost", label: "냉방비 부담", options: ["낮음", "보통", "높음"] },
+      { key: "heatSensitivity", label: "더위 민감도", options: ["덜 타는 편", "보통", "많이 타는 편", "매우 힘든 편"] },
     ],
   },
   {
-    title: "냉방 사용 성향",
+    title: "한파",
     fields: [
-      { key: "coolingPriority", label: "냉방 우선순위", options: ["건강 우선", "절약 우선", "균형"] },
-      { key: "acUsableHours", label: "에어컨 사용 가능 시간", options: ["거의 안 씀", "하루 1시간 이내", "하루 2~3시간", "필요하면 사용"] },
-      { key: "sleepCooling", label: "취침 중 냉방 사용", options: ["가능", "부담됨", "거의 안 함"] },
-      { key: "cost", label: "냉방비 부담", options: ["낮음", "보통", "높음"] },
+      { key: "heating", label: "난방 방식", options: ["개별난방", "중앙난방", "전기장판 중심", "난방 어려움"] },
+      { key: "heatingCost", label: "난방비 부담", options: ["낮음", "보통", "높음"] },
+      { key: "coldSensitivity", label: "추위 민감도", options: ["덜 타는 편", "보통", "많이 타는 편", "매우 힘든 편"] },
+    ],
+  },
+  {
+    title: "침수",
+    fields: [
+      { key: "lowland", label: "저지대 여부", options: ["아니오", "예"] },
+      { key: "drainage", label: "배수 상태", options: ["좋음", "보통", "자주 막힘"] },
+      { key: "entryHeight", label: "출입구 높이", options: ["지면보다 높음", "비슷함", "낮음"] },
+      { key: "floodExp", label: "주변 침수 경험", options: ["없음", "가끔", "자주"] },
+    ],
+  },
+  {
+    title: "공기질",
+    fields: [
+      { key: "airPurifier", label: "공기청정기", options: ["있음", "없음"] },
+      { key: "filterStatus", label: "필터 관리 상태", options: ["좋음", "보통", "약함"] },
     ],
   },
 ];
@@ -87,7 +90,6 @@ export default function ProfilePage() {
   const [values, setValues] = useState<Record<string, string>>(caregiverMode ? caregiverProfile : userProfile);
   const [open, setOpen] = useState<Record<string, boolean>>({ [SECTIONS[0].title]: true });
   const [memoAnalyzed, setMemoAnalyzed] = useState(false);
-  const [saved, setSaved] = useState(false);
 
   // localStorage 복원이 늦게 끝나는 경우(직접 새로고침) 저장된 값으로 한 번 맞춘다.
   const synced = useRef(false);
@@ -99,8 +101,8 @@ export default function ProfilePage() {
   }, [hydrated, caregiverMode, caregiverProfile, userProfile]);
 
   const copy = caregiverMode
-    ? { kicker: "보호자 모드 · 고정 프로필", title: "부모님 집 정보 설정", button: "저장하기", desc: "부모님이나 가족이 사는 집의 기본 조건을 저장합니다." }
-    : { kicker: "고정 프로필", title: "내 주거환경 설정", button: "저장하기", desc: "우리 집의 기본 조건을 저장합니다." };
+    ? { kicker: "보호자 모드 · 고정 프로필", title: "부모님 집 환경 분석", button: "저장하기", desc: "부모님 집의 방향, 창문, 단열, 층수, 냉난방 환경을 저장합니다." }
+    : { kicker: "고정 프로필", title: "내 집 환경 분석", button: "저장하기", desc: "집의 방향, 창문, 단열, 층수, 냉난방 환경을 저장합니다." };
 
   const setField = (k: string, v: string) => setValues((s) => ({ ...s, [k]: v }));
   const toggleSection = (t: string) => setOpen((o) => ({ ...o, [t]: !o[t] }));
@@ -119,8 +121,7 @@ export default function ProfilePage() {
 
   function save() {
     saveProfile(values);
-    setSaved(true);
-    window.setTimeout(() => router.push("/user"), 900);
+    router.push("/user");
   }
 
   return (
@@ -129,7 +130,7 @@ export default function ProfilePage() {
         <p className="text-sm text-forest/55">{copy.kicker}</p>
         <h1 className="font-display text-xl font-extrabold text-ink">{copy.title}</h1>
         <p className="mt-2 text-sm leading-relaxed text-forest/65">
-          {copy.desc} 이 정보는 매일 오전 6시 날씨와 함께 반영되어 행동계획을 갱신하는 데 사용됩니다.
+          {copy.desc} 이 정보는 매일 날씨와 함께 반영되어 폭염·한파·침수 등 오늘의 기후위험을 판단하는 데 사용됩니다.
         </p>
       </div>
 
@@ -222,14 +223,10 @@ export default function ProfilePage() {
       <button onClick={save} className="rounded-2xl bg-lime py-3.5 text-center font-bold text-forest transition hover:brightness-105">
         {copy.button}
       </button>
-      {saved && (
-        <div className="animate-fade-up rounded-2xl bg-mint-soft/70 px-4 py-3 text-center ring-1 ring-green/15">
-          <p className="text-sm font-bold text-pine">저장되었습니다.</p>
-          <p className="mt-0.5 text-xs text-forest/60">입력한 정보가 오늘 위험도 계산에 반영됩니다.</p>
-        </div>
-      )}
       <p className="text-center text-xs leading-relaxed text-forest/45">
         매일 오전 6시 오늘의 날씨와 함께 반영되어 행동계획을 갱신합니다.
+        <br />
+        이름·연락처 같은 직접 식별정보는 LLM에 전달하지 않습니다.
       </p>
     </div>
   );
