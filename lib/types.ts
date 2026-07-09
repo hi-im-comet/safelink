@@ -32,6 +32,15 @@ export interface Household {
   assignee: string | null; // 담당자
   status: Status;
   dday: number; // D-day (0 이하이면 오늘 처리 필요)
+  // 상세 화면용 가구 정보
+  ageBand: string; // 연령대
+  housingType: string; // 거주 형태 (반지하/노후주택/아파트 ...)
+  householdType: string; // 가구 유형 (독거 고령자/1인 가구 ...)
+  alone: boolean; // 혼자 거주
+  healthRisk: boolean; // 건강 취약
+  hasCar: boolean; // 차량 보유
+  hasPet: boolean; // 반려동물
+  guardianNeeded: boolean; // 보호자 연락 필요
   needsSupport?: boolean; // 지원 검토 필요
   helpRequested?: boolean; // 사용자/보호자 도움 요청 → 최상단
   requestedAt?: string | null; // 요청 시각(ISO)

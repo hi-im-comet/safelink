@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Household } from "@/lib/types";
 import { gradeOfHousehold } from "@/lib/risk/score";
 import { GRADE_META, HAZARDS } from "@/lib/hazards";
@@ -12,9 +13,10 @@ export function PriorityRow({ h, rank }: { h: Household; rank: number }) {
   const todayNeeded = h.dday <= 0;
 
   return (
-    <div
-      className={`group relative grid grid-cols-[3.6rem_minmax(0,1fr)_auto] items-center gap-4 rounded-2xl bg-white px-4 py-3.5 ring-1 transition hover:-translate-y-px hover:shadow-soft sm:px-5 ${
-        help ? "ring-2 ring-ember/40" : "ring-ink/8"
+    <Link
+      href={`/admin/households/${h.id}`}
+      className={`group relative grid cursor-pointer grid-cols-[3.6rem_minmax(0,1fr)_auto] items-center gap-4 rounded-2xl bg-white px-4 py-3.5 ring-1 transition hover:-translate-y-px hover:shadow-soft sm:px-5 ${
+        help ? "ring-2 ring-ember/40" : "ring-ink/8 hover:ring-green/40"
       }`}
     >
       {/* 등급 색 바 */}
@@ -66,8 +68,8 @@ export function PriorityRow({ h, rank }: { h: Household; rank: number }) {
         </p>
       </div>
 
-      {/* 메타 */}
-      <div className="flex items-center gap-4 sm:gap-6">
+      {/* 메타 + 상세 보기 */}
+      <div className="flex items-center gap-4 sm:gap-5">
         <div className="hidden text-right sm:block">
           <div className="text-sm font-semibold text-forest">{h.assignee ?? "미배정"}</div>
           <div className="text-xs text-forest/45">담당</div>
@@ -81,8 +83,15 @@ export function PriorityRow({ h, rank }: { h: Household; rank: number }) {
           )}
           <div className="text-xs text-forest/45">처리 기한</div>
         </div>
+        {/* 상세 보기 화살표 */}
+        <div className="flex items-center gap-1 text-forest/35 transition group-hover:text-green">
+          <span className="hidden text-xs font-semibold lg:inline">상세 보기</span>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="transition group-hover:translate-x-0.5">
+            <path d="M5 3l5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
       </div>
-    </div>
+    </Link>
   );
 }
 

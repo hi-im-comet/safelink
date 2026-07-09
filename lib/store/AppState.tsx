@@ -10,7 +10,7 @@ import {
   useEffect,
   useState,
 } from "react";
-import type { Hazard, Household, UserMode, UserProfile } from "@/lib/types";
+import type { Hazard, Household, Status, UserMode, UserProfile } from "@/lib/types";
 import { demoHouseholds, USER_HOUSEHOLD_ID } from "@/lib/mock/households";
 import { assessRisk, PRIMARY_HAZARD } from "@/lib/hazards";
 
@@ -31,6 +31,7 @@ interface AppStateValue extends Persisted {
   changeMode: () => void; // 모드 재선택 (프로필·요청 초기화)
   saveProfile: (p: UserProfile) => void;
   submitHelpRequest: (reasons: string[]) => void;
+  setHouseholdStatus: (id: string, status: Status) => void;
   getHousehold: (id: string) => Household | undefined;
   resetDemo: () => void;
 }
@@ -54,8 +55,33 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as Partial<Persisted>;
+        // 항상 최신 스키마(demoHouseholds)를 기준으로 하고, 저장된 운영 상태만 덮어쓴다.
+        // (가구 데이터 필드가 추가돼도 stale localStorage 때문에 깨지지 않도록)
+        const saved = Array.isArray(parsed.households) ? parsed.households : [];
+        const households = demoHouseholds.map((base) => {
+          const prev = saved.find((p) => p && p.id === base.id);
+          if (!prev) return { ...base };
+          const merged: Household = {
+            ...base,
+            status: prev.status ?? base.status,
+            needsSupport: prev.needsSupport ?? base.needsSupport,
+            helpRequested: prev.helpRequested,
+            requestedAt: prev.requestedAt,
+            helpReasons: prev.helpReasons,
+            helpSource: prev.helpSource,
+          };
+          // 사용자 연결 가구는 사용자 입력 반영값도 복원
+          if (base.isUser && prev.helpRequested) {
+            merged.hazard = prev.hazard ?? base.hazard;
+            merged.score = typeof prev.score === "number" ? prev.score : base.score;
+            merged.region = prev.region ?? base.region;
+            merged.ageInfo = prev.ageInfo ?? base.ageInfo;
+            merged.factors = Array.isArray(prev.factors) ? prev.factors : base.factors;
+          }
+          return merged;
+        });
         setState((s) => ({
-          households: parsed.households ?? s.households,
+          households,
           mode: parsed.mode ?? null,
           profile: parsed.profile ?? null,
           selectedHazard: parsed.selectedHazard ?? s.selectedHazard,
@@ -129,6 +155,14 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  // 관리자 상세에서 상태 변경 → localStorage에 저장되어 새로고침/리스트에 유지된다.
+  const setHouseholdStatus = useCallback((id: string, status: Status) => {
+    setState((s) => ({
+      ...s,
+      households: s.households.map((h) => (h.id === id ? { ...h, status } : h)),
+    }));
+  }, []);
+
   const getHousehold = useCallback(
     (id: string) => state.households.find((h) => h.id === id),
     [state.households],
@@ -155,6 +189,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     changeMode,
     saveProfile,
     submitHelpRequest,
+    setHouseholdStatus,
     getHousehold,
     resetDemo,
   };
