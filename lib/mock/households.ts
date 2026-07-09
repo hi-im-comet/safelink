@@ -111,9 +111,9 @@ export const demoHouseholds: Household[] = [
 
   // ── 미세먼지 ────────────────────────────────────────────
   {
-    id: "H-105", region: "푸른동", hazard: "dust", score: 79,
-    ageInfo: "60대", factors: ["호흡기 질환", "미세먼지 취약"],
-    actions: ["외출 자제 안내", "마스크 지원"],
+    id: "H-105", region: "푸른동", hazard: "dust", score: 86,
+    ageInfo: "60대 · 호흡기 질환", factors: ["호흡기 질환", "미세먼지 고위험", "고령"],
+    actions: ["긴급 외출 자제 안내", "마스크·공기청정기 지원", "전화 확인"],
     assignee: "김복지", status: "대기", dday: 0, needsSupport: true,
   },
   {
