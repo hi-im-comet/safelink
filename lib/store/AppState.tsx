@@ -1,87 +1,64 @@
 "use client";
 
-// 클라이언트 공유 상태. /user 와 /admin 이 같은 트리를 공유하므로
+// 클라이언트 공유 상태. /user 와 /admin 이 같은 트리를 공유한다.
 // 사용자가 도움 요청을 누르면 관리자 리스트가 즉시 갱신된다.
-// localStorage로 새로고침/탭 이동에도 유지된다. (백엔드 붙으면 이 자리만 교체)
+// 로그인·서버 없이 localStorage에만 저장된다. (SSR 안전)
 import {
   createContext,
   useCallback,
   useContext,
   useEffect,
-  useMemo,
   useState,
 } from "react";
-import type { ActionLog, HelpSource, Household, LlmCall, Metrics } from "@/lib/types";
-import { HOUSEHOLDS } from "@/lib/mock/households";
-import { BASE_METRICS } from "@/lib/mock/metrics";
-import { TODAY_WEATHER } from "@/lib/mock/weather";
-import { CAREGIVER_PROFILE_DEFAULT, PROFILE_DEFAULT, USER_INFO_DEFAULT } from "@/lib/mock/user";
+import type { Hazard, Household, UserMode, UserProfile } from "@/lib/types";
+import { demoHouseholds, USER_HOUSEHOLD_ID } from "@/lib/mock/households";
+import { assessRisk, PRIMARY_HAZARD } from "@/lib/hazards";
 
-const STORAGE_KEY = "coollink.demo.v5";
+const STORAGE_KEY = "safelink.demo.v2";
 
 interface Persisted {
   households: Household[];
-  actionLogs: ActionLog[];
-  llmCalls: LlmCall[];
-  userProfile: Record<string, string>;
-  caregiverProfile: Record<string, string>;
-  userInfo: Record<string, string>;
-  caregiverMode: boolean;
+  mode: UserMode | null;
+  profile: UserProfile | null;
+  selectedHazard: Hazard;
 }
 
 interface AppStateValue extends Persisted {
   hydrated: boolean;
-  weather: typeof TODAY_WEATHER;
-  metrics: Metrics;
+  hasProfile: boolean;
+  setHazard: (h: Hazard) => void;
+  setMode: (m: UserMode) => void;
+  changeMode: () => void; // 모드 재선택 (프로필·요청 초기화)
+  saveProfile: (p: UserProfile) => void;
+  submitHelpRequest: (reasons: string[]) => void;
   getHousehold: (id: string) => Household | undefined;
-  submitHelpRequest: (
-    id: string,
-    payload: { reasons: string[]; tags?: string[]; recommendedActions?: string[]; contactTag?: string },
-    source?: HelpSource,
-  ) => void;
-  saveProfile: (profile: Record<string, string>) => void;
-  saveUserInfo: (info: Record<string, string>) => void;
-  setCaregiverMode: (on: boolean) => void;
-  recordAction: (
-    id: string,
-    payload: { result: string; note: string; nextVisit?: string; status?: Household["status"]; by?: string },
-  ) => void;
-  logLlmCall: (call: Omit<LlmCall, "id" | "at">) => void;
   resetDemo: () => void;
 }
 
 const seed = (): Persisted => ({
-  households: JSON.parse(JSON.stringify(HOUSEHOLDS)),
-  actionLogs: [],
-  llmCalls: [],
-  userProfile: { ...PROFILE_DEFAULT },
-  caregiverProfile: { ...CAREGIVER_PROFILE_DEFAULT },
-  userInfo: { ...USER_INFO_DEFAULT },
-  caregiverMode: false,
+  households: JSON.parse(JSON.stringify(demoHouseholds)),
+  mode: null,
+  profile: null,
+  selectedHazard: PRIMARY_HAZARD,
 });
 
 const AppStateContext = createContext<AppStateValue | null>(null);
-
-const uid = (p: string) => `${p}_${Math.random().toString(36).slice(2, 9)}`;
 
 export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<Persisted>(seed);
   const [hydrated, setHydrated] = useState(false);
 
-  // 마운트 후 localStorage에서 복원 (SSR 불일치 방지)
+  // 마운트 후 localStorage 복원 (SSR 불일치 방지)
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as Partial<Persisted>;
-        // 누락된 키(구버전 호환)는 기본값으로 채운다.
         setState((s) => ({
-          ...s,
-          ...parsed,
-          userProfile: { ...PROFILE_DEFAULT, ...(parsed.userProfile ?? {}) },
-          caregiverProfile: { ...CAREGIVER_PROFILE_DEFAULT, ...(parsed.caregiverProfile ?? {}) },
-          userInfo: { ...USER_INFO_DEFAULT, ...(parsed.userInfo ?? {}) },
-          caregiverMode: parsed.caregiverMode ?? false,
+          households: parsed.households ?? s.households,
+          mode: parsed.mode ?? null,
+          profile: parsed.profile ?? null,
+          selectedHazard: parsed.selectedHazard ?? s.selectedHazard,
         }));
       }
     } catch {
@@ -90,6 +67,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     setHydrated(true);
   }, []);
 
+  // 변경 시 저장
   useEffect(() => {
     if (!hydrated) return;
     try {
@@ -99,85 +77,56 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state, hydrated]);
 
-  const submitHelpRequest = useCallback(
-    (
-      id: string,
-      payload: { reasons: string[]; tags?: string[]; recommendedActions?: string[]; contactTag?: string },
-      source: HelpSource = "user",
-    ) => {
-      setState((s) => ({
-        ...s,
-        households: s.households.map((h) =>
-          h.id === id
-            ? {
-                ...h,
-                helpRequested: true,
-                requestedAt: new Date().toISOString(),
-                helpReasons: payload.reasons,
-                helpTags: payload.tags,
-                helpContactTag: payload.contactTag,
-                helpSource: source,
-                recommendedActions:
-                  payload.recommendedActions && payload.recommendedActions.length
-                    ? payload.recommendedActions
-                    : h.recommendedActions,
-                status: h.status === "완료" ? "대기" : h.status,
-              }
-            : h,
-        ),
-      }));
-    },
-    [],
-  );
-
-  const saveProfile = useCallback((profile: Record<string, string>) => {
-    setState((s) => (s.caregiverMode ? { ...s, caregiverProfile: profile } : { ...s, userProfile: profile }));
+  const setHazard = useCallback((h: Hazard) => {
+    setState((s) => ({ ...s, selectedHazard: h }));
   }, []);
 
-  const saveUserInfo = useCallback((info: Record<string, string>) => {
-    setState((s) => ({ ...s, userInfo: info }));
+  const setMode = useCallback((m: UserMode) => {
+    setState((s) => ({ ...s, mode: m }));
   }, []);
 
-  const setCaregiverMode = useCallback((on: boolean) => {
-    setState((s) => ({ ...s, caregiverMode: on }));
-  }, []);
-
-  const recordAction = useCallback<AppStateValue["recordAction"]>(
-    (id, payload) => {
-      const log: ActionLog = {
-        id: uid("log"),
-        householdId: id,
-        at: new Date().toISOString(),
-        result: payload.result,
-        note: payload.note,
-        nextVisit: payload.nextVisit,
-        by: payload.by ?? "담당자",
-      };
-      setState((s) => ({
-        ...s,
-        actionLogs: [log, ...s.actionLogs],
-        households: s.households.map((h) =>
-          h.id === id && payload.status ? { ...h, status: payload.status } : h,
-        ),
-      }));
-    },
-    [],
-  );
-
-  const logLlmCall = useCallback<AppStateValue["logLlmCall"]>((call) => {
+  // 모드 변경 — 프로필·도움요청 초기화 후 모드 선택 화면으로
+  const changeMode = useCallback(() => {
     setState((s) => ({
       ...s,
-      llmCalls: [{ ...call, id: uid("llm"), at: new Date().toISOString() }, ...s.llmCalls],
+      mode: null,
+      profile: null,
+      households: JSON.parse(JSON.stringify(demoHouseholds)),
     }));
   }, []);
 
-  const resetDemo = useCallback(() => {
-    setState(seed());
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-    } catch {
-      /* noop */
-    }
+  const saveProfile = useCallback((p: UserProfile) => {
+    setState((s) => ({ ...s, profile: p }));
+  }, []);
+
+  // 도움 요청 — 사용자 가구에 현재 프로필·선택 재난 유형의 분석 결과를 반영한다.
+  const submitHelpRequest = useCallback((reasons: string[]) => {
+    setState((s) => {
+      if (!s.profile) return s;
+      const a = assessRisk(s.profile, s.selectedHazard);
+      const requestedAt = new Date().toISOString();
+      return {
+        ...s,
+        households: s.households.map((h) =>
+          h.id === USER_HOUSEHOLD_ID
+            ? {
+                ...h,
+                hazard: s.selectedHazard,
+                score: a.score,
+                region: s.profile!.region || h.region,
+                ageInfo: `${s.profile!.ageBand}${s.profile!.alone ? " · 독거" : ""}`,
+                factors: a.tags.slice(0, 3),
+                actions: reasons.length ? reasons : h.actions,
+                helpRequested: true,
+                requestedAt,
+                helpReasons: reasons,
+                helpSource: s.mode === "guardian" ? "guardian" : "user",
+                status: "대기",
+              }
+            : h,
+        ),
+      };
+    });
   }, []);
 
   const getHousehold = useCallback(
@@ -185,27 +134,28 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     [state.households],
   );
 
-  const metrics = useMemo<Metrics>(() => {
-    const live = state.llmCalls.length;
-    const llmCalls = BASE_METRICS.llmCalls + live;
-    const noLlmRate =
-      Math.round(((BASE_METRICS.analyzed - llmCalls) / BASE_METRICS.analyzed) * 1000) / 10;
-    const docRequests = llmCalls + BASE_METRICS.cacheReuse; // 호출 + 캐시 재사용
-    return { ...BASE_METRICS, llmCalls, noLlmRate, docRequests };
-  }, [state.llmCalls.length]);
+  const resetDemo = useCallback(() => {
+    setState(seed());
+    try {
+      // 사용 모드·프로필·요청 상태 등 SafeLink 관련 localStorage 값을 모두 삭제
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith("safelink"))
+        .forEach((k) => localStorage.removeItem(k));
+    } catch {
+      /* noop */
+    }
+  }, []);
 
   const value: AppStateValue = {
     ...state,
     hydrated,
-    weather: TODAY_WEATHER,
-    metrics,
-    getHousehold,
-    submitHelpRequest,
+    hasProfile: state.profile !== null,
+    setHazard,
+    setMode,
+    changeMode,
     saveProfile,
-    saveUserInfo,
-    setCaregiverMode,
-    recordAction,
-    logLlmCall,
+    submitHelpRequest,
+    getHousehold,
     resetDemo,
   };
 

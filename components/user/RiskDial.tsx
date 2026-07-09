@@ -1,25 +1,15 @@
-import type { Grade } from "@/lib/types";
-
-const COLOR: Record<Grade, string> = {
-  urgent: "#BD4A2C",
-  call: "#C9881F",
-  guide: "#5FA12B",
-  monitor: "#2E8B6B",
-};
-
 export function RiskDial({
   score,
-  grade,
   label,
+  color,
 }: {
   score: number;
-  grade: Grade;
   label: string;
+  color: string;
 }) {
   const r = 66;
   const c = 2 * Math.PI * r;
   const off = c * (1 - score / 100);
-  const color = COLOR[grade];
 
   return (
     <div className="relative mx-auto h-[168px] w-[168px]">

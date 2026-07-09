@@ -27,7 +27,7 @@ export function Logo({
           tone === "light" ? "text-white" : "text-ink"
         }`}
       >
-        CoolLink
+        SafeLink
         <span className="ml-1 rounded-md bg-lime/30 px-1.5 py-0.5 text-[0.7em] font-bold text-forest align-middle">
           AI
         </span>

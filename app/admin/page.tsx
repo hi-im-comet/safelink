@@ -2,58 +2,42 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useAppState } from "@/lib/store/AppState";
-import { computeRisk, householdCounts, sortByPriority } from "@/lib/risk/score";
-import { PRIMARY_HAZARD, HAZARD_LABELS, HAZARD_MODULES } from "@/lib/mock/weather";
+import { householdCounts, matchFilter, sortByPriority } from "@/lib/risk/score";
+import { HAZARDS, ADMIN_DEMO_NOTE, ADMIN_OPERATING_NOTE } from "@/lib/hazards";
 import { CountUp } from "@/components/CountUp";
+import { HazardChips } from "@/components/HazardChips";
 import { PriorityRow } from "@/components/admin/PriorityRow";
 import { FilterChips, type FilterDef } from "@/components/admin/FilterChips";
 import { DaySummary } from "@/components/admin/DaySummary";
-import type { FilterKey, Grade, Household } from "@/lib/types";
-
-function matchFilter(h: Household, key: FilterKey, grade: Grade): boolean {
-  if (key === "all") return true;
-  if (key === "highrisk") return grade === "urgent";
-  if (key === "call") return h.status === "전화중" || (grade === "call" && h.status === "대기");
-  if (key === "visit") return h.status === "방문예정";
-  if (key === "support") return !!h.needsSupport;
-  if (key === "done") return h.status === "완료";
-  return false;
-}
+import type { FilterKey } from "@/lib/types";
 
 function subtitleFor(active: FilterKey, c: ReturnType<typeof householdCounts>): string {
   switch (active) {
-    case "highrisk":
-      return `우선 확인 대상 ${c.highrisk}가구를 보고 있습니다.`;
-    case "call":
-      return `전화 확인 필요 ${c.call}가구를 보고 있습니다.`;
-    case "visit":
-      return `방문 필요 ${c.visit}가구를 보고 있습니다.`;
-    case "support":
-      return `지원 검토 ${c.support}가구를 보고 있습니다.`;
-    case "done":
-      return "완료 처리된 가구를 보고 있습니다.";
-    default:
-      return "";
+    case "highrisk": return `우선 확인 대상 ${c.highrisk}가구를 보고 있습니다.`;
+    case "call": return `전화 확인 필요 ${c.call}가구를 보고 있습니다.`;
+    case "visit": return `방문 필요 ${c.visit}가구를 보고 있습니다.`;
+    case "support": return `지원 검토 ${c.support}가구를 보고 있습니다.`;
+    case "done": return "완료 처리된 가구를 보고 있습니다.";
+    default: return "";
   }
 }
 
 export default function AdminDashboard() {
-  const { households, weather, hydrated } = useAppState();
+  const { households, selectedHazard, setHazard, hydrated } = useAppState();
   const [active, setActive] = useState<FilterKey>("all");
-  const [weatherOpen, setWeatherOpen] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+  const def = HAZARDS[selectedHazard];
 
-  const graded = useMemo(
-    () => households.map((h) => ({ h, grade: computeRisk(h, weather).grade })),
-    [households, weather],
+  // 선택 재난 유형 기준으로 리스트가 바뀐다.
+  const hazardList = useMemo(
+    () => households.filter((h) => h.hazard === selectedHazard),
+    [households, selectedHazard],
   );
-
-  const counts = useMemo(() => householdCounts(households, weather), [households, weather]);
-
-  const list = useMemo(() => {
-    const filtered = graded.filter(({ h, grade }) => matchFilter(h, active, grade)).map(({ h }) => h);
-    return sortByPriority(filtered, weather);
-  }, [graded, active, weather]);
+  const counts = useMemo(() => householdCounts(hazardList), [hazardList]);
+  const list = useMemo(
+    () => sortByPriority(hazardList.filter((h) => matchFilter(h, active))),
+    [hazardList, active],
+  );
 
   const filters: FilterDef[] = [
     { key: "all", label: "전체", count: counts.queue },
@@ -64,12 +48,14 @@ export default function AdminDashboard() {
     { key: "done", label: "완료", count: counts.done },
   ];
 
-  const helpCount = counts.help;
-
   function selectFilter(key: FilterKey) {
     setActive(key);
-    setWeatherOpen(false);
     requestAnimationFrame(() => listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }
+
+  function changeHazard(h: typeof selectedHazard) {
+    setHazard(h);
+    setActive("all");
   }
 
   return (
@@ -77,44 +63,40 @@ export default function AdminDashboard() {
       {/* 헤더 */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-3xl font-extrabold tracking-tight text-ink">오늘의 기후위험 대응</h1>
+          <h1 className="font-display text-3xl font-extrabold tracking-tight text-ink">지역 취약가구 우선 대응</h1>
           <p className="mt-1 text-forest/65">
-            오늘 활성 위험 · <b className="text-forest">{HAZARD_LABELS[PRIMARY_HAZARD]}</b> · {weather.alert} · {weather.highTemp}℃ · 체감 {weather.feelsLike}℃ · 열대야
+            오늘 활성 위험 · <b style={{ color: def.theme.fg }}>{def.label}</b> · {def.today.alert} · {def.today.headline}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {helpCount > 0 && (
+          {counts.help > 0 && (
             <button
               onClick={() => selectFilter("highrisk")}
               className="inline-flex items-center gap-2 rounded-full bg-ember-soft px-3.5 py-2 text-sm font-bold text-ember-ink transition hover:brightness-95"
             >
               <span className="h-2 w-2 rounded-full bg-ember animate-pulse" />
-              응급·고위험 우선 확인
+              도움요청·고위험 우선 확인
             </button>
           )}
           <DaySummary />
         </div>
       </div>
 
-      {/* 기후위험 모듈 상태 — 확장 가능성 표시 */}
-      <div className="mt-3 flex flex-wrap gap-2">
-        {HAZARD_MODULES.map((m) => {
-          const live = m.status === "활성";
-          return (
-            <span
-              key={m.key}
-              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${live ? "bg-forest text-white" : "bg-mist text-forest/50"}`}
-            >
-              <span className={`h-1.5 w-1.5 rounded-full ${live ? "bg-lime" : "bg-forest/30"}`} />
-              {m.label} {m.status}
-            </span>
-          );
-        })}
+      {/* 오늘 활성 위험 칩 */}
+      <div className="mt-4">
+        <p className="mb-2 text-xs font-semibold text-forest/45">재난 유형 선택 — 유형에 따라 위험도와 우선순위가 바뀝니다</p>
+        <HazardChips value={selectedHazard} onChange={changeHazard} />
       </div>
 
-      {/* 스탯 그룹 — 비대칭, 클릭 가능 */}
+      {/* 시연용 데이터 안내 */}
+      <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-mist px-3 py-1.5 text-xs text-forest/55">
+        <span className="h-1.5 w-1.5 rounded-full bg-forest/30" />
+        {ADMIN_DEMO_NOTE}
+      </p>
+
+      {/* 스탯 그룹 */}
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-12">
-        {/* 고위험 가구 → 고위험 필터 */}
+        {/* 우선 확인 대상 */}
         <button
           onClick={() => selectFilter("highrisk")}
           className={`relative overflow-hidden rounded-xl3 bg-forest p-6 text-left text-white shadow-lift transition hover:-translate-y-0.5 lg:col-span-3 ${
@@ -130,39 +112,39 @@ export default function AdminDashboard() {
           <p className="mt-3 text-sm text-white/70">위험도 80점 이상 · 눌러서 필터 →</p>
         </button>
 
-        {/* 오늘 폭염 위험 → 날씨 상세 패널 */}
-        <button
-          onClick={() => setWeatherOpen((o) => !o)}
-          className={`rounded-xl3 bg-white p-6 text-left ring-1 ring-ink/8 shadow-soft transition hover:-translate-y-0.5 lg:col-span-6 ${
-            weatherOpen ? "ring-2 ring-forest" : ""
-          }`}
-        >
+        {/* 오늘 재난 상황 */}
+        <div className="rounded-xl3 bg-white p-6 ring-1 ring-ink/8 shadow-soft lg:col-span-6">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-forest/60">오늘 {HAZARD_LABELS[PRIMARY_HAZARD]} 위험</p>
-            <span className="rounded-full bg-ember-soft px-3 py-1 text-sm font-bold text-ember-ink">
-              {weatherOpen ? "상세 닫기" : "날씨 상세 보기"}
+            <p className="text-sm font-medium text-forest/60">오늘 {def.label} 상황</p>
+            <span
+              className="rounded-full px-3 py-1 text-sm font-bold"
+              style={{ background: def.theme.soft, color: def.theme.ink }}
+            >
+              {def.today.alert}
             </span>
           </div>
-          <div className="mt-4 flex items-end gap-5">
-            <div className="flex items-baseline gap-1">
-              <span className="tnum text-5xl font-extrabold text-ink">{weather.highTemp}</span>
-              <span className="text-2xl text-forest/50">°</span>
-            </div>
-            <p className="mb-1 text-sm text-forest/60">
-              체감 {weather.feelsLike}° · {weather.alert}
-              {weather.nightHeat ? " · 열대야" : ""}
-            </p>
+          <p className="mt-3 text-lg font-bold text-ink">{def.today.headline}</p>
+          <div className="mt-3 h-3 overflow-hidden rounded-full bg-mist">
+            <div className="h-full rounded-full" style={{ width: `${def.today.severity}%`, background: def.theme.bar }} />
           </div>
-          <div className="mt-4 h-3 overflow-hidden rounded-full bg-mist">
-            <div className="h-full rounded-full" style={{ width: `${weather.score}%`, background: "linear-gradient(90deg,#9BD64A,#C9881F,#BD4A2C)" }} />
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {def.today.stats.map((s) => (
+              <span
+                key={s.label}
+                className={`rounded-full px-2.5 py-1 text-xs font-medium ${s.warn ? "" : "bg-mist text-forest/70"}`}
+                style={s.warn ? { background: def.theme.soft, color: def.theme.ink } : undefined}
+              >
+                {s.label} {s.value}
+              </span>
+            ))}
           </div>
           <div className="mt-3 flex items-center justify-between text-xs text-forest/45">
             <span>전체 관리 {counts.total}가구 · 오늘 처리 큐 {counts.queue}</span>
-            <span>규칙 엔진 실시간 산정</span>
+            <span>규칙 기반 실시간 산정</span>
           </div>
-        </button>
+        </div>
 
-        {/* 작업 스택 → 전화/방문/지원 필터 */}
+        {/* 작업 스택 */}
         <div className="grid grid-cols-3 gap-4 lg:col-span-3 lg:grid-cols-1">
           <MiniWork label="전화 확인" value={counts.call} dot="bg-amber" active={active === "call"} onClick={() => selectFilter("call")} />
           <MiniWork label="방문" value={counts.visit} dot="bg-pine" active={active === "visit"} onClick={() => selectFilter("visit")} />
@@ -170,31 +152,11 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* 날씨 상세 패널 */}
-      {weatherOpen && (
-        <div className="mt-4 animate-fade-up rounded-xl3 bg-white p-6 ring-1 ring-ink/8 shadow-soft">
-          <div className="flex items-center justify-between">
-            <h3 className="font-display text-lg font-bold text-ink">오늘 날씨 · {HAZARD_LABELS[PRIMARY_HAZARD]} 상세</h3>
-            <button onClick={() => setWeatherOpen(false)} className="text-forest/40 hover:text-forest">✕</button>
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
-            <WeatherStat label="최고기온" value={`${weather.highTemp}℃`} />
-            <WeatherStat label="체감온도" value={`${weather.feelsLike}℃`} warm />
-            <WeatherStat label="습도" value={`${weather.humidity}%`} />
-            <WeatherStat label="특보" value={weather.alert} warm />
-            <WeatherStat label="야간" value={weather.nightHeat ? "열대야 지속" : "해소"} />
-          </div>
-          <p className="mt-4 rounded-xl bg-mist/70 px-4 py-2.5 text-sm text-forest/70">
-            이 날씨 값은 <b className="text-pine">위험도 계산(날씨 35%)</b>에 그대로 반영됩니다.
-          </p>
-        </div>
-      )}
-
       {/* 우선순위 리스트 */}
       <div ref={listRef} className="mt-9 scroll-mt-24">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 className="font-display text-xl font-bold text-ink">우선순위 리스트</h2>
+            <h2 className="font-display text-xl font-bold text-ink">우선순위 리스트 · {def.label}</h2>
             {active !== "all" && (
               <p className="mt-1 flex items-center gap-2 text-sm text-forest/60">
                 {subtitleFor(active, counts)}
@@ -209,7 +171,7 @@ export default function AdminDashboard() {
 
         <div className="mt-4 flex flex-col gap-2.5">
           {list.map((h, i) => (
-            <PriorityRow key={h.id} h={h} weather={weather} rank={i + 1} />
+            <PriorityRow key={h.id} h={h} rank={i + 1} />
           ))}
           {hydrated && list.length === 0 && (
             <div className="rounded-2xl bg-white p-10 text-center ring-1 ring-ink/8">
@@ -219,6 +181,11 @@ export default function AdminDashboard() {
           )}
         </div>
       </div>
+
+      {/* 운영 방식 안내 (차분하게) */}
+      <p className="mt-10 border-t border-ink/8 pt-5 text-xs leading-relaxed text-forest/45">
+        {ADMIN_OPERATING_NOTE}
+      </p>
     </div>
   );
 }
@@ -249,14 +216,5 @@ function MiniWork({
       </div>
       <CountUp to={value} className="tnum text-2xl font-extrabold text-ink" />
     </button>
-  );
-}
-
-function WeatherStat({ label, value, warm }: { label: string; value: string; warm?: boolean }) {
-  return (
-    <div className={`rounded-2xl p-3 text-center ${warm ? "bg-ember-soft" : "bg-mist/70"}`}>
-      <div className={`text-lg font-extrabold ${warm ? "text-ember-ink" : "text-ink"}`}>{value}</div>
-      <div className="mt-0.5 text-xs text-forest/50">{label}</div>
-    </div>
   );
 }

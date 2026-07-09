@@ -5,9 +5,8 @@ import { usePathname } from "next/navigation";
 
 const TABS = [
   { href: "/user", label: "홈", icon: <path d="M3 9l7-6 7 6v8a1 1 0 0 1-1 1h-3v-5H7v5H4a1 1 0 0 1-1-1V9z" /> },
-  { href: "/user/profile", label: "집환경", icon: <><path d="M3 5h14v10H3z" /><path d="M3 9h14" /></> },
+  { href: "/user/profile", label: "정보", icon: <><circle cx="10" cy="7" r="3" /><path d="M4 17a6 6 0 0 1 12 0" /></> },
   { href: "/user/help", label: "도움요청", icon: <><circle cx="10" cy="10" r="7" /><path d="M10 6v8M6 10h8" /></> },
-  { href: "/user/mypage", label: "마이페이지", icon: <><circle cx="10" cy="7" r="3" /><path d="M4 17a6 6 0 0 1 12 0" /></> },
 ];
 
 export function UserBottomNav() {

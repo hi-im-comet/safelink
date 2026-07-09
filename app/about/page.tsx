@@ -1,15 +1,22 @@
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
-import { AI_STRUCTURE, BASE_METRICS, EXPANSION_MODULES } from "@/lib/mock/metrics";
+import { HAZARDS, HAZARD_ORDER, DISCLAIMER } from "@/lib/hazards";
 
-const DAILY = [
-  { who: "사용자", text: "집 환경을 한 번 등록합니다." },
-  { who: "시스템", text: "매일 오전 6시 날씨·기후특보를 반영해 오늘의 기후위험과 행동을 갱신합니다." },
-  { who: "보호자", text: "부모님·가족의 안부 확인이 필요한지 봅니다." },
-  { who: "관리자", text: "긴급 요청과 우선 확인 대상을 운영 우선순위로 봅니다." },
+const FLOW = [
+  { step: "1", title: "날씨·특보 데이터 수집", note: "기온·강수·미세먼지·풍속과 기상특보를 매일 반영합니다." },
+  { step: "2", title: "사용자·가구 정보 반영", note: "거주 형태·연령·건강·냉난방 등 우리 집 조건을 함께 봅니다." },
+  { step: "3", title: "재난 유형별 위험도 계산", note: "폭염·홍수·한파·미세먼지·태풍을 규칙 기반으로 점수화합니다." },
+  { step: "4", title: "우선순위 분류", note: "누구를 먼저 확인해야 하는지 운영 우선순위로 정렬합니다." },
+  { step: "5", title: "맞춤 행동요령 생성", note: "지금 해야 할 일을 쉬운 말로 안내합니다." },
 ];
 
-const TIER_STYLE: Record<string, string> = {
+const AI_USAGE = [
+  { tier: "위험도 계산", mode: "규칙 기반", tone: "green", note: "긴급 판단은 규칙 기반 점수 계산을 우선 사용합니다. 반복 판단에 LLM을 쓰지 않습니다." },
+  { tier: "문장 생성", mode: "선택적 LLM", tone: "mint", note: "보호자 공유 문구·전화 스크립트·체크리스트 문장 생성 등 표현에만 LLM을 활용할 수 있습니다." },
+  { tier: "개인정보 보호", mode: "분리 구조", tone: "lime", note: "이름·연락처 같은 개인정보는 LLM에 직접 전달하지 않는 구조로 설계합니다." },
+];
+
+const TONE: Record<string, string> = {
   green: "bg-forest text-white",
   mint: "bg-mint-soft text-ink ring-1 ring-green/12",
   lime: "bg-lime/20 text-ink ring-1 ring-lime/30",
@@ -26,45 +33,35 @@ export default function AboutPage() {
       {/* 1. 하는 일 */}
       <section className="stagger pt-2">
         <h1 className="max-w-3xl font-display text-[1.9rem] font-extrabold leading-tight tracking-tight text-ink sm:text-[2.5rem]">
-          CoolLink AI가 하는 일
+          SafeLink AI가 하는 일
         </h1>
         <p className="mt-4 max-w-2xl text-[1.05rem] leading-relaxed text-forest/75">
-          CoolLink AI는 날씨만 보는 서비스가 아니라, 집의 구조와 생활패턴, 건강정보를 함께 보고
-          <b className="text-forest"> 오늘의 기후위험</b>을 판단합니다.
+          SafeLink AI는 단순 날씨 앱이 아니라, 날씨·특보·주거 환경·가족 상태를 함께 보고
+          <b className="text-forest"> 오늘의 생활재난 위험</b>을 판단합니다.
         </p>
       </section>
 
-      {/* 활성 위험 선택 과정 */}
-      <section className="mt-8">
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          {["날씨·특보 수집", "활성 위험 선택", "코드 기반 점수", "맞춤 행동 생성"].map((step, i) => (
-            <div key={step} className="flex items-center gap-2">
-              {i > 0 && <span className="text-forest/30">→</span>}
-              <span className="rounded-full bg-mint-soft px-3 py-1.5 font-semibold text-forest">{step}</span>
+      {/* 2. 작동 흐름 */}
+      <section className="mt-12">
+        <h2 className="font-display text-xl font-bold text-ink sm:text-2xl">작동 흐름</h2>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          {FLOW.map((f) => (
+            <div key={f.step} className="rounded-2xl bg-white p-5 ring-1 ring-ink/8">
+              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-forest text-sm font-bold text-lime">{f.step}</span>
+              <h3 className="mt-3 font-display text-base font-bold text-ink">{f.title}</h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-forest/65">{f.note}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* 2. 매일 아침 갱신 */}
+      {/* 3. AI 사용 방식 */}
       <section className="mt-14">
-        <h2 className="font-display text-xl font-bold text-ink sm:text-2xl">매일 아침 다시 계산되는 기후위험</h2>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          {DAILY.map((d) => (
-            <div key={d.who} className="flex items-start gap-3 rounded-2xl bg-white p-5 ring-1 ring-ink/8">
-              <span className="shrink-0 rounded-full bg-forest px-3 py-1 text-sm font-bold text-lime">{d.who}</span>
-              <p className="text-forest/75">{d.text}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* 3. AI는 꼭 필요한 곳에만 */}
-      <section className="mt-14">
-        <h2 className="font-display text-xl font-bold text-ink sm:text-2xl">계산은 가볍게, 필요한 문장만 AI로</h2>
+        <h2 className="font-display text-xl font-bold text-ink sm:text-2xl">AI는 꼭 필요한 곳에만</h2>
+        <p className="mt-2 text-sm text-forest/55">위험 판단은 규칙 기반, 표현은 선택적 LLM. 개인정보는 분리합니다.</p>
         <div className="mt-5 grid gap-4 md:grid-cols-3">
-          {AI_STRUCTURE.map((t) => (
-            <div key={t.tier} className={`rounded-xl3 p-6 ${TIER_STYLE[t.tone]}`}>
+          {AI_USAGE.map((t) => (
+            <div key={t.tier} className={`rounded-xl3 p-6 ${TONE[t.tone]}`}>
               <p className={`text-sm font-bold ${t.tone === "green" ? "text-lime" : "text-pine"}`}>{t.mode}</p>
               <h3 className="mt-1.5 font-display text-lg font-bold">{t.tier}</h3>
               <p className={`mt-2 text-sm leading-relaxed ${t.tone === "green" ? "text-white/75" : "text-forest/65"}`}>{t.note}</p>
@@ -73,54 +70,54 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* 4. AI 운영 효율 (요약) */}
-      <section className="mt-5 rounded-xl3 bg-forest p-6 text-white">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="text-sm font-medium text-mint">오늘 AI 운영 효율</p>
-            <div className="mt-2 flex items-end gap-2">
-              <span className="tnum text-5xl font-extrabold">{BASE_METRICS.noLlmRate}</span>
-              <span className="mb-1 text-white/70">% LLM 미사용 처리</span>
+      {/* MVP 운영 방식 */}
+      <section className="mt-14">
+        <h2 className="font-display text-xl font-bold text-ink sm:text-2xl">MVP 운영 방식</h2>
+        <p className="mt-2 text-sm text-forest/55">별도 로그인 없이 누구나 바로 체험할 수 있는 대회 제출용 구조입니다.</p>
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          {[
+            { title: "바로 체험", note: "별도 회원가입 없이 관리자 화면과 사용자 앱을 바로 확인할 수 있습니다." },
+            { title: "시연용 관리자 데이터", note: "관리자 화면은 서비스 흐름을 보여주기 위한 시연용 취약가구 데이터를 사용합니다." },
+            { title: "브라우저 저장", note: "사용자 앱에서 입력한 정보는 현재 브라우저 localStorage에 저장되며 서버로 전송되지 않습니다." },
+          ].map((c) => (
+            <div key={c.title} className="rounded-2xl bg-mint-soft/60 p-5 ring-1 ring-green/12">
+              <h3 className="font-display text-base font-bold text-ink">{c.title}</h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-forest/70">{c.note}</p>
             </div>
-          </div>
-          <div className="flex flex-wrap gap-5 text-sm">
-            <div><div className="tnum text-2xl font-bold text-lime">{BASE_METRICS.analyzed}</div><div className="text-white/60">전체 위험 분석</div></div>
-            <div><div className="tnum text-2xl font-bold">{BASE_METRICS.docRequests}</div><div className="text-white/60">문서 생성 요청</div></div>
-            <div><div className="tnum text-2xl font-bold">{BASE_METRICS.llmCalls}</div><div className="text-white/60">Bedrock 호출</div></div>
-            <div><div className="tnum text-2xl font-bold">{BASE_METRICS.cacheReuse}</div><div className="text-white/60">캐시 재사용</div></div>
-          </div>
+          ))}
         </div>
-        <p className="mt-4 text-sm text-white/65">
-          반복 계산은 코드가, 문서는 캐시·템플릿을 먼저 쓰고 꼭 필요할 때만 LLM을 호출합니다. 개인정보는 LLM에 직접 전달하지 않습니다.
-        </p>
       </section>
 
-      {/* 5. 확장 */}
+      {/* 4. 대응하는 생활재난 */}
       <section className="mt-14">
-        <h2 className="font-display text-xl font-bold text-ink sm:text-2xl">폭염에서 시작해 다른 기후재난으로 확장합니다</h2>
-        <p className="mt-2 text-sm text-forest/55">위험도 구조는 그대로 두고 재난 종류만 바꿉니다. 지금 MVP는 폭염에 집중합니다.</p>
-        <div className="mt-5 flex flex-wrap items-center gap-3">
-          {EXPANSION_MODULES.map((m, i) => {
-            const live = m.status === "운영 중";
+        <h2 className="font-display text-xl font-bold text-ink sm:text-2xl">대응하는 생활재난</h2>
+        <p className="mt-2 text-sm text-forest/55">같은 위험도 구조로 재난 유형만 확장합니다.</p>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          {HAZARD_ORDER.map((h) => {
+            const d = HAZARDS[h];
             return (
-              <div key={m.key} className="flex items-center gap-3">
-                {i > 0 && <span className="text-forest/25">→</span>}
-                <div className={`rounded-2xl px-4 py-3 ${live ? "bg-forest text-white shadow-soft" : "bg-mist text-forest/60 ring-1 ring-green/10"}`}>
-                  <div className="flex items-center gap-2">
-                    <span className={`h-1.5 w-1.5 rounded-full ${live ? "bg-lime" : "bg-forest/30"}`} />
-                    <span className="font-bold">{m.name}</span>
-                    <span className={`text-xs ${live ? "text-mint" : "text-forest/40"}`}>{m.status}</span>
-                  </div>
-                  <p className={`mt-1 text-xs ${live ? "text-white/70" : "text-forest/45"}`}>{m.note}</p>
+              <div key={h} className="rounded-2xl bg-white p-5 ring-1 ring-ink/8">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg" aria-hidden>{d.emoji}</span>
+                  <span className="rounded-full px-2 py-0.5 text-sm font-bold" style={{ background: d.theme.soft, color: d.theme.ink }}>{d.label}</span>
                 </div>
+                <p className="mt-3 text-xs leading-relaxed text-forest/60">{d.metrics.join(" · ")}</p>
               </div>
             );
           })}
         </div>
       </section>
 
+      {/* 5. 실제 서비스 확장 */}
+      <section className="mt-8 rounded-xl3 bg-forest p-6 text-white sm:p-8">
+        <h2 className="font-display text-lg font-bold text-lime sm:text-xl">실제 서비스 확장</h2>
+        <p className="mt-3 max-w-3xl leading-relaxed text-white/85">
+          실제 서비스에서는 지자체 관리자 계정, 보호자 계정, 취약가구 DB, 공공데이터 API, 기상특보 API, 대피소 데이터 연동으로 확장할 수 있습니다.
+        </p>
+      </section>
+
       {/* 진입 */}
-      <section className="mt-14 grid gap-3 sm:grid-cols-2">
+      <section className="mt-8 grid gap-3 sm:grid-cols-2">
         <Link href="/admin" className="group flex items-center justify-between rounded-2xl bg-forest p-5 text-white shadow-soft transition hover:-translate-y-0.5">
           <span className="font-display font-bold">관리자 대시보드</span>
           <span className="text-lime transition group-hover:translate-x-0.5">→</span>
@@ -130,6 +127,9 @@ export default function AboutPage() {
           <span className="text-pine transition group-hover:translate-x-0.5">→</span>
         </Link>
       </section>
+
+      {/* 안내 문구 (필수) */}
+      <p className="mt-10 text-center text-xs leading-relaxed text-forest/50">{DISCLAIMER}</p>
     </main>
   );
 }

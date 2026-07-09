@@ -12,8 +12,9 @@ const display = Bricolage_Grotesque({
 });
 
 export const metadata: Metadata = {
-  title: "CoolLink AI — 저전력 기후안전 에이전트",
-  description: "폭염 대응을 개인 행동과 공공 돌봄 운영으로 연결합니다.",
+  title: "SafeLink AI — 생활재난 안전 에이전트",
+  description:
+    "폭염·홍수·한파·미세먼지·태풍까지, 우리 집 기준으로 오늘의 생활재난 위험과 행동요령을 안내합니다.",
 };
 
 export const viewport: Viewport = {

@@ -4,10 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { useAppState } from "@/lib/store/AppState";
+import { HAZARDS } from "@/lib/hazards";
 
 export function AdminNav() {
   const pathname = usePathname();
-  const { weather, resetDemo } = useAppState();
+  const { selectedHazard, resetDemo } = useAppState();
+  const def = HAZARDS[selectedHazard];
 
   const links = [{ href: "/admin", label: "대시보드" }];
 
@@ -17,7 +19,7 @@ export function AdminNav() {
         <Logo />
         <nav className="flex items-center gap-1">
           {links.map((l) => {
-            const active = l.href === "/admin" ? pathname === "/admin" : pathname.startsWith(l.href);
+            const active = pathname === l.href;
             return (
               <Link
                 key={l.href}
@@ -33,9 +35,12 @@ export function AdminNav() {
         </nav>
 
         <div className="ml-auto flex items-center gap-3">
-          <span className="hidden items-center gap-2 rounded-full bg-ember-soft px-3 py-1.5 text-sm font-semibold text-ember-ink sm:inline-flex">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-ember" />
-            {weather.alert} · {weather.highTemp}°
+          <span
+            className="hidden items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold sm:inline-flex"
+            style={{ background: def.theme.soft, color: def.theme.ink }}
+          >
+            <span className="h-2 w-2 animate-pulse rounded-full" style={{ background: def.theme.fg }} />
+            오늘 {def.label} · {def.today.alert}
           </span>
           <button
             onClick={resetDemo}
