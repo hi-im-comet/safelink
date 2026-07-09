@@ -16,7 +16,6 @@ import type { UserMode } from "@/lib/types";
 import { HazardChips } from "@/components/HazardChips";
 import { RiskDial } from "@/components/user/RiskDial";
 import { RiskDetails } from "@/components/user/RiskDetails";
-import { ProfileForm } from "@/components/user/ProfileForm";
 import { ShelterSheet } from "@/components/user/ShelterSheet";
 import { CopyButton } from "@/components/CopyButton";
 import { defaultProfile } from "@/lib/profile";
@@ -49,28 +48,36 @@ export default function UserHome() {
   // 1) 모드 미선택 → 모드 선택 화면
   if (!mode) return <ModeSelect onPick={setMode} />;
 
-  // 2) 모드 있으나 프로필 없음 → 입력 폼
+  // 2) 모드 있으나 프로필 없음 → "정보 등록 필요" 안내 (입력폼은 /user/profile 에서만)
   if (!hasProfile || !profile) {
     const isGuardian = mode === "guardian";
     return (
-      <div className="stagger flex flex-col gap-4">
-        <div>
-          <p className="text-sm text-forest/55">{isGuardian ? "보호자 확인 모드" : "본인 안전 모드"}</p>
-          <h1 className="font-display text-xl font-extrabold text-ink">
-            {isGuardian ? "확인할 가족 정보를 등록해주세요" : "내 안전 정보를 등록해주세요"}
+      <div className="stagger flex min-h-full flex-col justify-center gap-5">
+        <div className="rounded-xl3 bg-white p-6 ring-1 ring-green/10 shadow-soft">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-mint-soft px-3 py-1 text-xs font-bold text-pine">
+            {isGuardian ? "보호자 확인 모드" : "본인 안전 모드"}
+          </span>
+          <h1 className="mt-3 font-display text-xl font-extrabold leading-snug text-ink">
+            {isGuardian
+              ? "확인할 가족 정보를 등록하면 위험도를 확인할 수 있어요"
+              : "내 안전 정보를 등록하면 위험도를 확인할 수 있어요"}
           </h1>
           <p className="mt-2 text-sm leading-relaxed text-forest/65">
-            {isGuardian
-              ? "부모님 또는 가족의 주거·건강 상태를 바탕으로 안부 확인 필요 여부를 안내합니다."
-              : "입력한 정보를 바탕으로 오늘의 생활재난 위험과 행동요령을 맞춰 안내합니다."}
+            주거 형태와 건강·생활 조건을 입력하면 오늘의 생활재난 위험도와 행동요령을 안내합니다.
           </p>
+          <div className="mt-5 flex flex-col gap-2.5">
+            <Link href="/user/profile" className="rounded-2xl bg-forest py-3.5 text-center font-bold text-white transition hover:bg-pine">
+              직접 입력하기
+            </Link>
+            <button
+              onClick={() => saveProfile(defaultProfile(mode))}
+              className="rounded-2xl bg-lime py-3.5 text-center font-bold text-forest transition hover:brightness-105"
+            >
+              샘플 정보로 체험하기
+            </button>
+          </div>
+          <p className="mt-3 text-center text-xs text-forest/45">🔒 입력 정보는 이 브라우저에만 저장됩니다.</p>
         </div>
-        <ProfileForm
-          mode={mode}
-          initial={defaultProfile(mode)}
-          submitLabel={isGuardian ? "가족 정보 저장하기" : "내 안전 정보 저장하기"}
-          onSave={saveProfile}
-        />
         <p className="text-center text-xs leading-relaxed text-forest/45">{DISCLAIMER}</p>
       </div>
     );

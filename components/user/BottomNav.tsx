@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAppState } from "@/lib/store/AppState";
 
 const TABS = [
   { href: "/user", label: "홈", icon: <path d="M3 9l7-6 7 6v8a1 1 0 0 1-1 1h-3v-5H7v5H4a1 1 0 0 1-1-1V9z" /> },
@@ -11,6 +12,11 @@ const TABS = [
 
 export function UserBottomNav() {
   const pathname = usePathname();
+  const { hydrated, mode, hasProfile } = useAppState();
+
+  // 온보딩(모드 선택 · 정보 등록 필요) 화면에서는 탭바를 숨겨 흐름을 단순하게 유지
+  if (hydrated && pathname === "/user" && (!mode || !hasProfile)) return null;
+
   return (
     <nav className="shrink-0 border-t border-ink/8 bg-white/90 px-2 pb-3 pt-2 backdrop-blur-md">
       <div className="flex items-stretch justify-around">

@@ -32,8 +32,10 @@ export default function HelpPage() {
   if ((!mode || !hasProfile || !profile) && !already && !sent) {
     return (
       <div className="stagger flex h-full flex-col items-center justify-center text-center">
-        <p className="text-forest/70">도움 요청 전에 정보를 먼저 등록해주세요.</p>
-        <Link href="/user" className="mt-3 rounded-2xl bg-forest px-5 py-3 text-sm font-bold text-white">정보 등록하러 가기</Link>
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-mint-soft text-2xl">📝</div>
+        <p className="mt-4 font-display text-lg font-bold text-ink">정보 등록 후 이용할 수 있습니다</p>
+        <p className="mt-1 max-w-xs text-sm text-forest/60">내 정보 또는 가족 정보를 등록하면 도움 요청을 보낼 수 있어요.</p>
+        <Link href="/user/profile" className="mt-4 rounded-2xl bg-forest px-5 py-3 text-sm font-bold text-white transition hover:bg-pine">정보 등록하기</Link>
       </div>
     );
   }

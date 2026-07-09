@@ -30,6 +30,13 @@ export default function ProfilePage() {
   }
 
   const isGuardian = mode === "guardian";
+  const isEditing = profile !== null;
+  const title = isGuardian
+    ? isEditing ? "가족 정보 수정" : "가족 정보 등록"
+    : isEditing ? "내 안전 정보 수정" : "내 안전 정보 등록";
+  const submitLabel = isGuardian
+    ? isEditing ? "가족 정보 수정하기" : "가족 정보 저장하기"
+    : isEditing ? "내 안전 정보 수정하기" : "내 안전 정보 저장하기";
 
   function handleSave(p: UserProfile) {
     saveProfile(p);
@@ -52,9 +59,7 @@ export default function ProfilePage() {
     <div className="stagger flex flex-col gap-4">
       <div>
         <p className="text-sm text-forest/55">{isGuardian ? "보호자 확인 모드" : "본인 안전 모드"}</p>
-        <h1 className="font-display text-xl font-extrabold text-ink">
-          {isGuardian ? "가족 정보 수정" : "내 안전 정보 수정"}
-        </h1>
+        <h1 className="font-display text-xl font-extrabold text-ink">{title}</h1>
         <p className="mt-2 text-sm leading-relaxed text-forest/65">
           {isGuardian
             ? "부모님 또는 가족의 주거·건강 상태를 바탕으로 안부 확인 필요 여부를 안내합니다."
@@ -65,7 +70,7 @@ export default function ProfilePage() {
       <ProfileForm
         mode={mode}
         initial={profile ?? defaultProfile(mode)}
-        submitLabel={isGuardian ? "가족 정보 저장하기" : "내 안전 정보 저장하기"}
+        submitLabel={submitLabel}
         onSave={handleSave}
       />
 
