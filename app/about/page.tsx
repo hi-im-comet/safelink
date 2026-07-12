@@ -86,6 +86,9 @@ export default function AboutPage() {
             </div>
           ))}
         </div>
+        <p className="mt-3 rounded-2xl bg-white px-4 py-3 text-sm leading-relaxed text-forest/70 ring-1 ring-ink/8">
+          🔒 건강·장애·복용약 등 민감정보는 선택입력으로 설계했으며, 현재 MVP에서는 서버에 저장하지 않습니다.
+        </p>
       </section>
 
       {/* 4. 대응하는 생활재난 */}

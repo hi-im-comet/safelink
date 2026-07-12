@@ -20,6 +20,11 @@ export const demoHouseholds: Household[] = [
     assignee: "김복지", status: "대기", dday: 0, needsSupport: true,
     ageBand: "70대", housingType: "반지하", householdType: "독거 고령자",
     alone: true, healthRisk: true, hasCar: false, hasPet: false, guardianNeeded: true,
+    health: {
+      disabilityStatus: "yes", mobilitySupportNeeded: "yes", chronicDiseases: ["hypertension"],
+      medications: "혈압약", bloodType: "B", hospitalName: "햇살의원",
+      emergencyMemo: "혼자 계실 때 전화 확인 필요, 계단 이동 어려움",
+    },
   },
   {
     id: "H-140", region: "물빛동", hazard: "flood", score: 90,
@@ -28,6 +33,10 @@ export const demoHouseholds: Household[] = [
     assignee: "이생활", status: "방문예정", dday: 0,
     ageBand: "80대", housingType: "반지하", householdType: "독거 고령자",
     alone: true, healthRisk: true, hasCar: false, hasPet: false, guardianNeeded: true,
+    health: {
+      disabilityStatus: "yes", disabilityDetail: "거동이 불편해 계단 이동에 도움이 필요함",
+      mobilitySupportNeeded: "yes", chronicDiseases: ["cardio"], emergencyMemo: "침수 시 자력 대피 어려움",
+    },
   },
   {
     id: "H-076", region: "노을동", hazard: "flood", score: 84,
@@ -105,6 +114,10 @@ export const demoHouseholds: Household[] = [
     assignee: "김복지", status: "대기", dday: 0, needsSupport: true,
     ageBand: "80대", housingType: "노후주택", householdType: "독거 고령자",
     alone: true, healthRisk: true, hasCar: false, hasPet: false, guardianNeeded: true,
+    health: {
+      chronicDiseases: ["hypertension", "diabetes"], medications: "혈압약, 당뇨약",
+      mobilitySupportNeeded: "yes", bloodType: "O", emergencyMemo: "난방 약할 때 안부 확인 필요",
+    },
   },
   {
     id: "H-112", region: "바람골", hazard: "cold", score: 80,
@@ -121,6 +134,10 @@ export const demoHouseholds: Household[] = [
     assignee: "정나눔", status: "전화중", dday: 0,
     ageBand: "70대", housingType: "아파트", householdType: "독거 고령자",
     alone: true, healthRisk: true, hasCar: false, hasPet: true, guardianNeeded: true,
+    health: {
+      chronicDiseases: ["kidney"], mobilitySupportNeeded: "no",
+      bloodType: "AB", emergencyMemo: "반려동물과 함께 지냄 · 한파 시 안부 확인",
+    },
   },
   {
     id: "H-089", region: "물빛동", hazard: "cold", score: 63,
@@ -147,6 +164,10 @@ export const demoHouseholds: Household[] = [
     assignee: "김복지", status: "대기", dday: 0, needsSupport: true,
     ageBand: "60대", housingType: "아파트", householdType: "호흡기 취약 가구",
     alone: false, healthRisk: true, hasCar: false, hasPet: false, guardianNeeded: true,
+    health: {
+      chronicDiseases: ["respiratory"], medications: "천식 흡입제", allergies: "꽃가루",
+      bloodType: "A", hospitalName: "푸른숨내과", emergencyMemo: "미세먼지 나쁨 시 외출 자제 필요",
+    },
   },
   {
     id: "H-166", region: "별하동", hazard: "dust", score: 72,
@@ -189,6 +210,10 @@ export const demoHouseholds: Household[] = [
     assignee: "김복지", status: "대기", dday: 0, needsSupport: true,
     ageBand: "70대", housingType: "노후주택", householdType: "고령 가구",
     alone: false, healthRisk: false, hasCar: false, hasPet: false, guardianNeeded: true,
+    health: {
+      mobilitySupportNeeded: "yes", communicationSupportNeeded: "unknown",
+      chronicDiseases: ["hypertension"], emergencyMemo: "강풍·낙하물 위험 시 외출 자제",
+    },
   },
   {
     id: "H-178", region: "노을동", hazard: "wind", score: 76,

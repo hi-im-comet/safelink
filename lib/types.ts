@@ -17,6 +17,29 @@ export type HelpSource = "user" | "guardian" | "system";
 /** 사용자 앱 사용 모드 — 본인 안전 / 보호자 확인 */
 export type UserMode = "self" | "guardian";
 
+/* ── 건강·응급 지원 정보 (모두 선택입력) ──────────────────────
+ * 민감정보이므로 기본값은 미입력("" / []). 입력된 경우에만 위험도·문구에 반영된다.
+ * localStorage에만 저장되고 서버로 전송되지 않는다.
+ */
+export type DisabilityStatus = "none" | "yes" | "unknown" | ""; // "" = 입력 안 함
+export type TriState = "yes" | "no" | "unknown" | ""; // "" = 미입력
+export type BloodType = "A" | "B" | "O" | "AB" | "unknown" | ""; // "" = 입력 안 함
+
+/** 선택입력 건강·응급 참고 정보 (사용자 프로필·시연 가구가 공유) */
+export interface HealthInfo {
+  disabilityStatus?: DisabilityStatus; // 장애 여부
+  disabilityDetail?: string; // 장애 또는 도움이 필요한 사항 상세
+  mobilitySupportNeeded?: TriState; // 이동 도움 필요
+  communicationSupportNeeded?: TriState; // 의사소통 도움 필요
+  chronicDiseases?: string[]; // 주요 질환 (키 배열)
+  diseaseDetail?: string; // 질환 상세
+  medications?: string; // 복용약
+  allergies?: string; // 알레르기
+  bloodType?: BloodType; // 혈액형
+  hospitalName?: string; // 주 이용 병원 또는 기관
+  emergencyMemo?: string; // 응급 메모
+}
+
 /**
  * 시연용 가구 데이터 (실제 DB 없음).
  * 각 가구는 하나의 주요 재난 유형에 속하며, 재난 유형을 바꾸면 리스트가 바뀐다.
@@ -47,13 +70,14 @@ export interface Household {
   helpReasons?: string[]; // 요청 사유
   helpSource?: HelpSource; // 요청 출처
   isUser?: boolean; // 사용자 앱과 연결된 가구
+  health?: HealthInfo; // 건강·응급 참고 정보 (선택)
 }
 
 /**
  * 사용자가 직접 입력하는 본인/가족 정보. localStorage에만 저장된다.
  * 로그인·서버 전송 없음.
  */
-export interface UserProfile {
+export interface UserProfile extends HealthInfo {
   name: string; // 이름 또는 별칭 (보호자 모드에서는 등록 가족의 이름)
   relation?: string; // 보호자 모드: 관계(부모님/조부모/가족/지인)
   ageBand: string; // 연령대
@@ -66,6 +90,7 @@ export interface UserProfile {
   hasCar: boolean; // 차량 보유
   hasPet: boolean; // 반려동물
   guardianNeeded: boolean; // 보호자 연락 필요
+  // + HealthInfo의 선택입력 건강·응급 지원 정보 (disabilityStatus, medications, bloodType ...)
 }
 
 /** 규칙 기반 위험 분석 결과 (사용자 앱) */

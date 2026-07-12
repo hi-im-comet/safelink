@@ -2,8 +2,27 @@
 // 복잡한 AI 모델이 아니라 규칙 기반 점수 계산이다. (화면에서는 "AI 자동분류"로 표현)
 // 외부 API / LLM 키 없이 완전히 동작한다.
 import type { Grade, Hazard, RiskAssessment, UserMode, UserProfile } from "@/lib/types";
+import {
+  hasCardioMetabolic,
+  hasDisability,
+  hasDiseases,
+  hasEmergencyMemo,
+  hasMedications,
+  hasRespiratory,
+  healthSummaryFlags,
+  healthTags,
+  needsCommunication,
+  needsMobility,
+} from "@/lib/health";
 
 const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
+
+// 한글 받침에 따라 은/는
+const eunNeun = (word: string): string => {
+  const c = word.charCodeAt(word.length - 1);
+  if (Number.isNaN(c) || c < 0xac00 || c > 0xd7a3) return "은(는)";
+  return (c - 0xac00) % 28 === 0 ? "는" : "은";
+};
 
 /* ────────────────────────────────────────────────────────────
  * 등급
@@ -352,9 +371,75 @@ function checklist(p: UserProfile, hazard: Hazard): string[] {
 }
 
 /* ────────────────────────────────────────────────────────────
+ * 선택입력 건강·응급 정보 가산 (입력된 경우에만 반영, 과도하게 오르지 않도록 상한)
+ *   건강 취약(healthRisk)은 이미 vulnerability에 반영되어 여기서 중복 가산하지 않는다.
+ * ──────────────────────────────────────────────────────────── */
+const HEALTH_BONUS_CAP = 30;
+
+function healthAdjustment(p: UserProfile, hazard: Hazard): number {
+  let b = 0;
+  // 공통
+  if (hasDisability(p)) b += 8;
+  if (needsMobility(p)) b += 10;
+  if (needsCommunication(p)) b += 6;
+  if (hasDiseases(p)) b += 8;
+  if (hasEmergencyMemo(p)) b += 3;
+  // 재난 유형별 추가
+  switch (hazard) {
+    case "heat":
+      if (hasCardioMetabolic(p)) b += 8;
+      if (hasMedications(p)) b += 4;
+      break;
+    case "flood":
+      if (needsMobility(p)) b += 12;
+      if (hasDisability(p)) b += 8;
+      break;
+    case "cold":
+      if (hasCardioMetabolic(p)) b += 8;
+      break;
+    case "dust":
+      if (hasRespiratory(p)) b += 15;
+      break;
+    case "wind":
+      if (needsMobility(p)) b += 8;
+      if (needsCommunication(p)) b += 5;
+      break;
+  }
+  return Math.min(b, HEALTH_BONUS_CAP);
+}
+
+// 건강·응급 정보가 있을 때 설명 문장에 덧붙이는 강화 문구 (입력된 경우에만)
+function healthNote(p: UserProfile, hazard: Hazard): string {
+  switch (hazard) {
+    case "heat":
+      if (isElderly(p) && !p.hasAc && hasDiseases(p))
+        return " 고령·냉방 취약에 기저질환이 겹쳐 오늘은 특히 위험합니다. 수분을 자주 챙기고 시원한 곳을 이용하세요.";
+      break;
+    case "flood":
+      if (isLowFloor(p) && needsMobility(p))
+        return " 이동이 어려워 침수 시 대피가 늦어질 수 있으니 대피 경로와 도움 요청 방법을 미리 준비하세요.";
+      break;
+    case "cold":
+      if (p.heatingWeak && hasDiseases(p))
+        return " 난방 취약에 기저질환이 있어 실내 저체온에 특히 주의가 필요하고, 안부 확인이 권장됩니다.";
+      break;
+    case "dust":
+      if (isElderly(p) && hasRespiratory(p))
+        return " 고령·호흡기 질환으로 외출을 자제하고, 필요하면 마스크 지원을 요청하세요.";
+      if (hasRespiratory(p)) return " 호흡기 질환이 있어 외출을 줄이고 마스크 착용이 필요합니다.";
+      break;
+    case "wind":
+      if (p.hasPet) return " 반려동물과 함께 대피할 수 있도록 이동장·목줄을 미리 준비하세요.";
+      if (needsMobility(p)) return " 이동이 어려우면 무리한 외출을 피하고 도움을 요청하세요.";
+      break;
+  }
+  return "";
+}
+
+/* ────────────────────────────────────────────────────────────
  * 점수 구성(설명용 게이지)
  * ──────────────────────────────────────────────────────────── */
-function buildBreakdown(p: UserProfile, hazard: Hazard, base: number, vuln: number) {
+function buildBreakdown(p: UserProfile, hazard: Hazard, base: number, vuln: number, healthBonus: number) {
   const housing =
     hazard === "flood"
       ? isBasement(p) ? 92 : isLowFloor(p) ? 72 : 34
@@ -363,7 +448,7 @@ function buildBreakdown(p: UserProfile, hazard: Hazard, base: number, vuln: numb
         : hazard === "heat"
           ? isBasement(p) || isHighFloor(p) ? 70 : 44
           : isHouse(p) || isBasement(p) ? 62 : 40;
-  const personal = clamp((isElderly(p) ? 40 : isChild(p) ? 28 : 14) + (p.healthRisk ? 40 : 0) + (p.alone ? 16 : 0));
+  const personal = clamp((isElderly(p) ? 40 : isChild(p) ? 28 : 14) + (p.healthRisk ? 40 : 0) + (p.alone ? 16 : 0) + healthBonus);
   const support = clamp((p.guardianNeeded ? 24 : 0) + (p.alone ? 34 : 12) + (isElderly(p) ? 30 : 10));
   return [
     { label: "재난 강도", value: base },
@@ -382,16 +467,19 @@ export function assessRisk(p: UserProfile, hazard: Hazard): RiskAssessment {
   const def = HAZARDS[hazard];
   const base = def.today.severity;
   const { vuln, tags } = vulnerability(p, hazard);
-  const score = clamp(base * 0.4 + vuln * 0.6);
+  const healthBonus = healthAdjustment(p, hazard);
+  const score = clamp(base * 0.4 + vuln * 0.6 + healthBonus);
   const grade = gradeOf(score);
+  // 기본 취약 태그 + 건강·응급 태그 (입력된 경우에만)
+  const allTags = Array.from(new Set([...tags, ...healthTags(p)])).slice(0, 7);
   return {
     hazard,
     score,
     grade,
-    tags,
-    description: describe(p, hazard, grade),
+    tags: allTags,
+    description: describe(p, hazard, grade) + healthNote(p, hazard),
     checklist: checklist(p, hazard),
-    breakdown: buildBreakdown(p, hazard, base, vuln),
+    breakdown: buildBreakdown(p, hazard, base, vuln, healthBonus),
   };
 }
 
@@ -421,11 +509,14 @@ const GUARDIAN_SHARE: Record<Hazard, string> = {
 export function buildShareMessage(p: UserProfile, a: RiskAssessment, mode: UserMode): string {
   const label = HAZARDS[a.hazard].label;
   const region = p.region || "우리 동네";
+  // 공유 문구에는 민감정보를 자세히 쓰지 않고, 이동 도움 필요만 부드럽게 요약해 덧붙인다.
+  const mobility = needsMobility(p);
   if (mode === "guardian") {
     const who = p.name?.trim() ? p.name : "가족";
     return [
       `${who}, 오늘 ${region}에 ${label} 위험이 있어요.`,
       GUARDIAN_SHARE[a.hazard],
+      ...(mobility ? ["이동이 어려우시면 무리하지 마시고 바로 도움을 요청해주세요."] : []),
       "",
       "※ 긴급 상황에서는 119 및 지자체 안내를 우선하세요.",
     ].join("\n");
@@ -433,6 +524,7 @@ export function buildShareMessage(p: UserProfile, a: RiskAssessment, mode: UserM
   return [
     `오늘 ${region}에 ${label} 위험이 있어요.`,
     SELF_SHARE[a.hazard],
+    ...(mobility ? ["저는 이동 도움이 필요한 상태라 상황이 나빠지면 도움을 요청하겠습니다."] : []),
     "",
     "※ 긴급 상황에서는 119 및 지자체 안내를 우선하세요.",
   ].join("\n");
@@ -448,11 +540,19 @@ export function buildHelpMessage(
   const label = HAZARDS[a.hazard].label;
   const region = p.region || "우리 동네";
   const needs = requestTypes.length ? requestTypes.join(", ") : "안부 확인과 대피소 안내";
+  const lowFloor = p.housing === "반지하" || p.housing === "1층";
+  // 문구에는 민감정보를 그대로 노출하지 않고 요약형 플래그만 담는다.
+  const flags = healthSummaryFlags(p);
   if (mode === "guardian") {
     const who = p.name?.trim() ? p.name : "가족";
-    return `안녕하세요. ${region}에 거주하는 ${who}의 보호자입니다. 현재 ${label} 위험이 높아 ${needs}이(가) 필요합니다.`;
+    const lines = [`안녕하세요. ${region}에 거주하는 ${who}의 보호자입니다. 현재 ${label} 위험이 높아 ${needs}이(가) 필요합니다.`];
+    if (flags.length) lines.push(`${who}${eunNeun(who)} ${flags.join(", ")} 상태로, 방문 또는 전화 확인 시 참고 부탁드립니다.`);
+    return lines.join(" ");
   }
-  return `안녕하세요. 저는 ${region} 거주자입니다. 현재 ${label} 위험이 높아 ${needs}이(가) 필요합니다.`;
+  const lines = [`안녕하세요. 저는 ${region} 거주자입니다. 현재 ${label} 위험이 높아 ${needs}이(가) 필요합니다.`];
+  if (lowFloor) lines.push(`${p.housing}에 거주하고 있습니다.`);
+  if (flags.length) lines.push(`참고할 응급 정보로 ${flags.join(", ")}이(가) 있습니다.`);
+  return lines.join(" ");
 }
 
 /* ────────────────────────────────────────────────────────────

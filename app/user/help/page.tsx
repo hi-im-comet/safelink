@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useAppState } from "@/lib/store/AppState";
 import { assessRisk, buildHelpMessage, riskBand, HAZARDS, DISCLAIMER } from "@/lib/hazards";
+import { healthReferenceItems } from "@/lib/health";
 import { USER_HOUSEHOLD_ID } from "@/lib/mock/households";
 import { CopyButton } from "@/components/CopyButton";
 import { ShelterSheet } from "@/components/user/ShelterSheet";
@@ -78,6 +79,7 @@ export default function HelpPage() {
   const band = riskBand(risk.score);
   const def = HAZARDS[selectedHazard];
   const helpMsg = buildHelpMessage(profile!, risk, mode!, selected);
+  const refItems = healthReferenceItems(profile!);
 
   function send() {
     submitHelpRequest(selected);
@@ -147,6 +149,32 @@ export default function HelpPage() {
           <CopyButton text={helpMsg} label="문구 복사" />
         </div>
         <p className="mt-2 rounded-xl bg-white/70 p-3 text-sm leading-relaxed text-ink">{helpMsg}</p>
+        <p className="mt-2 text-[0.7rem] leading-relaxed text-forest/50">🔒 도움 요청 문구에는 민감정보가 요약 형태로만 포함됩니다.</p>
+      </section>
+
+      {/* 5. 응급 참고 정보 (입력된 건강·응급 정보) */}
+      <section className="mt-4 rounded-2xl bg-white p-4 ring-1 ring-ink/8">
+        <p className="text-sm font-bold text-ink">응급 참고 정보</p>
+        <p className="mt-0.5 text-xs text-forest/55">
+          {isGuardian ? "등록한 가족의 건강·응급 정보입니다." : "내가 입력한 건강·응급 정보입니다."} 관리자·담당자 확인 시 참고됩니다.
+        </p>
+        {refItems.length > 0 ? (
+          <dl className="mt-3 flex flex-col gap-2.5">
+            {refItems.map((it) => (
+              <div key={it.label} className="flex gap-3">
+                <dt className="w-24 shrink-0 text-xs font-semibold text-forest/50">{it.label}</dt>
+                <dd className="text-sm leading-relaxed text-ink">{it.value}</dd>
+              </div>
+            ))}
+          </dl>
+        ) : (
+          <div className="mt-3 rounded-xl bg-mist/50 px-3.5 py-3 text-sm text-forest/55">
+            입력된 응급 참고 정보가 없습니다.
+            <Link href="/user/profile" className="ml-1 font-semibold text-pine underline-offset-2 hover:underline">
+              정보 입력하기
+            </Link>
+          </div>
+        )}
       </section>
 
       {/* 전송 */}

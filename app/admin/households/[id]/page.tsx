@@ -5,6 +5,14 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import { useAppState } from "@/lib/store/AppState";
 import { HAZARDS, riskBand } from "@/lib/hazards";
+import {
+  hasDisability,
+  hasMedications,
+  hasRespiratory,
+  healthReferenceItems,
+  needsCommunication,
+  needsMobility,
+} from "@/lib/health";
 import { CopyButton } from "@/components/CopyButton";
 import { ShelterSheet } from "@/components/user/ShelterSheet";
 import type { Hazard, Household, Status } from "@/lib/types";
@@ -42,6 +50,28 @@ function contactMessage(h: Household): string {
     case "wind":
       return `오늘 ${region}에 강풍 특보가 있습니다. 창문을 단단히 고정하고 창가 물건을 치우며, 낙하물 위험 구역 접근을 피하도록 안내해주세요.`;
   }
+}
+
+// 재난 유형별 우선 대응 행동 (건강·응급 정보 기반 위험 분석 문구용)
+const HAZARD_ACTION: Record<Hazard, string> = {
+  heat: "안부 확인과 냉방 점검",
+  flood: "사전 대피 안내와 방문 점검",
+  cold: "안부 확인과 방문 점검",
+  dust: "외출 자제 안내와 마스크 지원",
+  wind: "대피 안내와 안전 점검",
+};
+
+// 건강·응급 정보가 있을 때 위험 분석에 덧붙이는 문구
+function healthPriorityNote(h: Household): string {
+  if (!healthReferenceItems(h.health).length) return "";
+  const bits: string[] = [];
+  if (needsMobility(h.health)) bits.push("이동 도움 필요");
+  if (needsCommunication(h.health)) bits.push("의사소통 도움 필요");
+  if (hasRespiratory(h.health)) bits.push("호흡기 질환");
+  if (hasDisability(h.health)) bits.push("장애·도움 필요");
+  if (hasMedications(h.health)) bits.push("복용약 확인 필요");
+  const flag = bits.length ? `${bits.slice(0, 2).join("·")} 정보가 있어` : "건강·응급 참고 정보가 있어";
+  return `이 가구는 ${h.householdType}이며 ${flag} ${HAZARDS[h.hazard].label} 상황에서 ${HAZARD_ACTION[h.hazard]} 우선순위가 높습니다.`;
 }
 
 // 상태별 다음 단계 문구 (대응 기록 마지막 줄)
@@ -100,6 +130,8 @@ export default function HouseholdDetail() {
   const band = riskBand(h.score);
   const todayNeeded = h.dday <= 0;
   const msg = contactMessage(h);
+  const healthItems = healthReferenceItems(h.health);
+  const healthNote = healthPriorityNote(h);
 
   const info: [string, string][] = [
     ["가구 ID", h.id],
@@ -191,6 +223,9 @@ export default function HouseholdDetail() {
             </div>
             <p className="mt-3 text-xs font-bold uppercase tracking-wide text-forest/45">위험 판단 이유</p>
             <p className="mt-1 text-sm leading-relaxed text-ink">{HAZARD_REASON[h.hazard]}</p>
+            {healthNote && (
+              <p className="mt-2 rounded-2xl bg-mint-soft/60 p-3 text-sm leading-relaxed text-pine ring-1 ring-green/12">{healthNote}</p>
+            )}
             <p className="mt-3 text-xs font-bold uppercase tracking-wide text-forest/45">우선 확인 사유</p>
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               {priorityReasons.map((r) => (
@@ -198,6 +233,28 @@ export default function HouseholdDetail() {
               ))}
             </div>
           </section>
+
+          {/* 건강·응급 참고 정보 (입력된 경우에만) */}
+          {healthItems.length > 0 && (
+            <section className="rounded-xl3 bg-white p-5 ring-1 ring-ink/8">
+              <h2 className="flex items-center gap-2 font-display text-lg font-bold text-ink">
+                <span aria-hidden>🩺</span> 건강·응급 참고 정보
+              </h2>
+              <p className="mt-1 text-sm text-forest/55">방문·전화 확인 시 참고할 선택입력 정보입니다.</p>
+              <dl className="mt-3 grid gap-x-4 gap-y-3 sm:grid-cols-2">
+                {healthItems.map((it) => (
+                  <div key={it.label}>
+                    <dt className="text-xs text-forest/45">{it.label}</dt>
+                    <dd className="text-sm font-semibold leading-relaxed text-ink">{it.value}</dd>
+                  </div>
+                ))}
+                <div>
+                  <dt className="text-xs text-forest/45">보호자 연락 필요</dt>
+                  <dd className="text-sm font-semibold text-ink">{h.guardianNeeded ? "예" : "아니오"}</dd>
+                </div>
+              </dl>
+            </section>
+          )}
         </div>
 
         {/* 우측: 필요한 조치 + 상태 변경 + 대피소 */}

@@ -13,6 +13,7 @@ import {
 import type { Hazard, Household, Status, UserMode, UserProfile } from "@/lib/types";
 import { demoHouseholds, USER_HOUSEHOLD_ID } from "@/lib/mock/households";
 import { assessRisk, PRIMARY_HAZARD } from "@/lib/hazards";
+import { healthFromProfile } from "@/lib/health";
 
 const STORAGE_KEY = "safelink.demo.v2";
 
@@ -77,6 +78,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
             merged.region = prev.region ?? base.region;
             merged.ageInfo = prev.ageInfo ?? base.ageInfo;
             merged.factors = Array.isArray(prev.factors) ? prev.factors : base.factors;
+            merged.health = prev.health ?? base.health; // 사용자가 입력한 건강·응급 정보
           }
           return merged;
         });
@@ -143,6 +145,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
                 ageInfo: `${s.profile!.ageBand}${s.profile!.alone ? " · 독거" : ""}`,
                 factors: a.tags.slice(0, 3),
                 actions: reasons.length ? reasons : h.actions,
+                health: healthFromProfile(s.profile!), // 관리자 상세에 사용자 건강·응급 정보 전달
                 helpRequested: true,
                 requestedAt,
                 helpReasons: reasons,
