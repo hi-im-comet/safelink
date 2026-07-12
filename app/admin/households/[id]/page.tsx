@@ -6,12 +6,14 @@ import { useState } from "react";
 import { useAppState } from "@/lib/store/AppState";
 import { HAZARDS, riskBand } from "@/lib/hazards";
 import {
+  hardToEvacuateAlone,
   hasDisability,
   hasMedications,
   hasRespiratory,
   healthReferenceItems,
   needsCommunication,
   needsMobility,
+  needsPower,
 } from "@/lib/health";
 import { CopyButton } from "@/components/CopyButton";
 import { ShelterSheet } from "@/components/user/ShelterSheet";
@@ -54,9 +56,9 @@ function contactMessage(h: Household): string {
 
 // 재난 유형별 우선 대응 행동 (건강·응급 정보 기반 위험 분석 문구용)
 const HAZARD_ACTION: Record<Hazard, string> = {
-  heat: "안부 확인과 냉방 점검",
+  heat: "전화 확인과 냉방 점검",
   flood: "사전 대피 안내와 방문 점검",
-  cold: "안부 확인과 방문 점검",
+  cold: "전화 확인과 방문 점검",
   dust: "외출 자제 안내와 마스크 지원",
   wind: "대피 안내와 안전 점검",
 };
@@ -66,10 +68,12 @@ function healthPriorityNote(h: Household): string {
   if (!healthReferenceItems(h.health).length) return "";
   const bits: string[] = [];
   if (needsMobility(h.health)) bits.push("이동 도움 필요");
+  if (hardToEvacuateAlone(h.health)) bits.push("혼자 대피 어려움");
   if (needsCommunication(h.health)) bits.push("의사소통 도움 필요");
   if (hasRespiratory(h.health)) bits.push("호흡기 질환");
   if (hasDisability(h.health)) bits.push("장애·도움 필요");
   if (hasMedications(h.health)) bits.push("복용약 확인 필요");
+  if (needsPower(h.health)) bits.push("의료기기 전원 필요");
   const flag = bits.length ? `${bits.slice(0, 2).join("·")} 정보가 있어` : "건강·응급 참고 정보가 있어";
   return `이 가구는 ${h.householdType}이며 ${flag} ${HAZARDS[h.hazard].label} 상황에서 ${HAZARD_ACTION[h.hazard]} 우선순위가 높습니다.`;
 }

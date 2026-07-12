@@ -1,27 +1,52 @@
 // 사용자 입력 폼 구성 + 기본값. 로그인 없이 localStorage에만 저장된다.
-import type { UserMode, UserProfile } from "@/lib/types";
-import { BLOOD_TYPES, DISABILITY_OPTIONS, DISEASE_OPTIONS, SUPPORT_OPTIONS } from "@/lib/health";
+import type { HealthInfo, UserMode, UserProfile } from "@/lib/types";
+import {
+  BLOOD_TYPES,
+  CAN_EVAC_OPTIONS,
+  CONTACT_PREF_OPTIONS,
+  DISEASE_OPTIONS,
+  HAVING_OPTIONS,
+  MED_STORAGE_OPTIONS,
+  MEDICAL_DEVICE_OPTIONS,
+  MOBILITY_STATUS_OPTIONS,
+  SENSORY_OPTIONS,
+  SUPPORT_OPTIONS,
+  SYMPTOM_OPTIONS,
+  YESNO_OPTIONS,
+} from "@/lib/health";
 
 export const AGE_BANDS = ["10대 이하", "20~30대", "40~50대", "60대", "70대", "80대 이상"];
 export const HOUSING_TYPES = ["아파트", "단독주택", "반지하", "1층", "고층"];
 export const RELATIONS = ["부모님", "조부모", "가족", "지인"];
 
 // 선택입력 건강·응급 정보의 기본값(미입력) — 새 필드가 없는 기존 프로필과의 호환용
-export const EMPTY_HEALTH: Required<Pick<UserProfile,
-  "disabilityStatus" | "disabilityDetail" | "mobilitySupportNeeded" | "communicationSupportNeeded" |
-  "chronicDiseases" | "diseaseDetail" | "medications" | "allergies" | "bloodType" | "hospitalName" | "emergencyMemo">> = {
+export const EMPTY_HEALTH = {
   disabilityStatus: "",
   disabilityDetail: "",
   mobilitySupportNeeded: "",
+  mobilityStatus: "",
+  evacuationHelpNeeded: "",
+  elevatorDependency: "",
+  canEvacuateAlone: "",
+  mobilityMemo: "",
   communicationSupportNeeded: "",
+  contactPreference: "",
+  sensorySupport: [],
+  communicationMemo: "",
   chronicDiseases: [],
   diseaseDetail: "",
+  recentSymptoms: [],
+  medicationStatus: "",
   medications: "",
+  medStorage: "",
+  allergyStatus: "",
   allergies: "",
+  medicalDevices: [],
   bloodType: "",
   hospitalName: "",
   emergencyMemo: "",
-};
+  evacuationKit: "",
+} satisfies Required<HealthInfo>;
 
 // 데모용 기본 예시 = "샘플 정보로 체험하기" 값 (입력 화면에서 자유롭게 수정 가능)
 export const DEMO_PROFILE_SELF: UserProfile = {
@@ -38,8 +63,12 @@ export const DEMO_PROFILE_SELF: UserProfile = {
   guardianNeeded: false,
   // 건강·응급 정보: 대부분 미입력/없음 (선택입력임을 보여주는 예시)
   ...EMPTY_HEALTH,
-  disabilityStatus: "none",
+  mobilityStatus: "independent",
+  evacuationHelpNeeded: "no",
+  communicationSupportNeeded: "no",
   chronicDiseases: ["none"],
+  medicationStatus: "no",
+  allergyStatus: "",
   bloodType: "",
 };
 
@@ -58,13 +87,18 @@ export const DEMO_PROFILE_GUARDIAN: UserProfile = {
   guardianNeeded: true,
   // 건강·응급 정보 일부 입력된 예시
   ...EMPTY_HEALTH,
-  disabilityStatus: "yes",
-  disabilityDetail: "거동이 불편해 계단 이동에 도움이 필요함",
-  mobilitySupportNeeded: "yes",
+  mobilityStatus: "stairs",
+  evacuationHelpNeeded: "yes",
+  canEvacuateAlone: "hard",
   communicationSupportNeeded: "no",
-  chronicDiseases: ["hypertension"],
-  medications: "혈압약",
+  contactPreference: "guardian",
+  chronicDiseases: ["hypertension", "diabetes"],
+  medicationStatus: "yes",
+  medications: "혈압약, 당뇨약",
+  allergyStatus: "unknown",
   bloodType: "unknown",
+  hospitalName: "햇살동 내과",
+  evacuationKit: "약 3일치, 처방전",
   emergencyMemo: "전화가 안 되면 보호자에게 먼저 연락 필요",
 };
 
@@ -94,6 +128,12 @@ export interface FormField {
   rows?: number; // textarea
 }
 
+// 카드 내부 소제목 묶음 (건강·응급 지원 정보 섹션에서 사용)
+export interface FormGroup {
+  title: string;
+  fields: FormField[];
+}
+
 export interface FormSection {
   title?: string;
   selfTitle?: string;
@@ -103,7 +143,9 @@ export interface FormSection {
   guardianNote?: string;
   badge?: string; // 예: "선택입력"
   notice?: string; // 섹션 하단 민감정보 안내
-  fields: FormField[];
+  collapsible?: boolean; // 상세 응급 정보 펼치기/접기
+  fields?: FormField[]; // 평면 필드
+  groups?: FormGroup[]; // 소제목 묶음
 }
 
 export const FORM_SECTIONS: FormSection[] = [
@@ -136,35 +178,85 @@ export const FORM_SECTIONS: FormSection[] = [
   {
     selfTitle: "내 건강·응급 지원 정보",
     guardianTitle: "가족 건강·응급 지원 정보",
-    selfNote: "선택입력 항목입니다. 입력하면 위험도 분석과 도움 요청 문구에 함께 반영됩니다.",
-    guardianNote: "선택입력 항목입니다. 입력하면 가족의 위험도 분석과 도움 요청 문구에 함께 반영됩니다.",
+    selfNote: "선택입력 항목입니다. 입력한 경우 위험도 분석과 도움 요청 문구에 함께 반영됩니다.",
+    guardianNote: "선택입력 항목입니다. 입력한 경우 위험도 분석과 도움 요청 문구에 함께 반영됩니다.",
     badge: "선택입력",
-    notice: "민감정보이므로 입력하지 않아도 됩니다. 입력한 정보는 현재 브라우저에만 저장되며 서버로 전송되지 않습니다.",
-    fields: [
-      { key: "disabilityStatus", type: "keychips", label: "장애 여부", keyOptions: DISABILITY_OPTIONS },
+    collapsible: true,
+    notice:
+      "건강·장애·복용약 등 민감정보는 선택입력입니다. 입력하지 않아도 서비스를 이용할 수 있습니다. 입력한 정보는 현재 브라우저에만 저장되며 서버로 전송되지 않습니다.",
+    groups: [
       {
-        key: "disabilityDetail",
-        type: "textarea",
-        selfLabel: "내 장애 또는 도움이 필요한 사항",
-        guardianLabel: "가족의 장애 또는 도움이 필요한 사항",
-        placeholder: "예: 휠체어 이용, 거동 불편, 청각장애, 시각장애, 의사소통 도움 필요",
-        rows: 2,
+        title: "이동·대피 지원",
+        fields: [
+          { key: "mobilityStatus", type: "keychips", selfLabel: "내 이동 상태", guardianLabel: "가족의 이동 상태", keyOptions: MOBILITY_STATUS_OPTIONS },
+          { key: "evacuationHelpNeeded", type: "keychips", label: "대피 시 도움 필요", keyOptions: SUPPORT_OPTIONS },
+          { key: "elevatorDependency", type: "keychips", label: "엘리베이터 없으면 이동 어려움", keyOptions: YESNO_OPTIONS },
+          { key: "canEvacuateAlone", type: "keychips", label: "혼자 대피 가능 여부", keyOptions: CAN_EVAC_OPTIONS },
+          {
+            key: "mobilityMemo",
+            type: "textarea",
+            selfLabel: "내가 대피할 때 필요한 도움",
+            guardianLabel: "가족이 대피할 때 필요한 도움",
+            placeholder: "예: 계단 이동 어려움, 휠체어 이용, 보행기 사용, 장시간 보행 어려움",
+            rows: 2,
+          },
+        ],
       },
-      { key: "mobilitySupportNeeded", type: "keychips", label: "이동 도움 필요", keyOptions: SUPPORT_OPTIONS },
-      { key: "communicationSupportNeeded", type: "keychips", label: "의사소통 도움 필요", keyOptions: SUPPORT_OPTIONS },
-      { key: "chronicDiseases", type: "multichips", selfLabel: "내 주요 질환", guardianLabel: "가족의 주요 질환", keyOptions: DISEASE_OPTIONS },
-      { key: "diseaseDetail", type: "textarea", label: "질환 상세", placeholder: "예: 3년 전 진단, 정기 통원 중", rows: 2 },
-      { key: "medications", type: "textarea", selfLabel: "내 복용약", guardianLabel: "가족의 복용약", placeholder: "예: 혈압약, 당뇨약", rows: 2 },
-      { key: "allergies", type: "text", label: "알레르기", placeholder: "예: 페니실린, 견과류" },
-      { key: "bloodType", type: "keychips", selfLabel: "내 혈액형", guardianLabel: "가족의 혈액형", keyOptions: BLOOD_TYPES },
-      { key: "hospitalName", type: "text", label: "주 이용 병원 또는 기관", placeholder: "예: ○○의원, ○○복지관" },
       {
-        key: "emergencyMemo",
-        type: "textarea",
-        selfLabel: "내 응급 메모",
-        guardianLabel: "가족 응급 메모",
-        placeholder: "예: 더위에 취약함, 혼자 계실 때 전화 확인 필요, 계단 이동 어려움",
-        rows: 2,
+        title: "의사소통·인지 지원",
+        fields: [
+          { key: "communicationSupportNeeded", type: "keychips", label: "의사소통 도움 필요", keyOptions: SUPPORT_OPTIONS },
+          { key: "contactPreference", type: "keychips", label: "연락 선호 방식", keyOptions: CONTACT_PREF_OPTIONS },
+          { key: "sensorySupport", type: "multichips", label: "감각·소통 지원", keyOptions: SENSORY_OPTIONS },
+          {
+            key: "communicationMemo",
+            type: "textarea",
+            label: "의사소통 메모",
+            placeholder: "예: 전화보다 문자를 선호함, 큰 글씨 안내 필요, 보호자에게 먼저 연락 필요",
+            rows: 2,
+          },
+        ],
+      },
+      {
+        title: "주요 질환·건강 상태",
+        fields: [
+          { key: "chronicDiseases", type: "multichips", selfLabel: "내 주요 질환", guardianLabel: "가족의 주요 질환", keyOptions: DISEASE_OPTIONS },
+          { key: "diseaseDetail", type: "textarea", label: "질환 상세 메모", placeholder: "예: 3년 전 진단, 정기 통원 중", rows: 2 },
+          { key: "recentSymptoms", type: "multichips", label: "최근 주의 증상", keyOptions: SYMPTOM_OPTIONS },
+        ],
+      },
+      {
+        title: "복용약·알레르기",
+        fields: [
+          { key: "medicationStatus", type: "keychips", label: "복용약 있음 여부", keyOptions: HAVING_OPTIONS },
+          { key: "medications", type: "textarea", selfLabel: "내 복용약", guardianLabel: "가족의 복용약", placeholder: "예: 혈압약, 당뇨약, 흡입기, 이뇨제, 냉장 보관 약 있음", rows: 2 },
+          { key: "medStorage", type: "keychips", label: "약 보관 주의", keyOptions: MED_STORAGE_OPTIONS },
+          { key: "allergyStatus", type: "keychips", label: "알레르기 있음 여부", keyOptions: HAVING_OPTIONS },
+          { key: "allergies", type: "textarea", selfLabel: "내 알레르기", guardianLabel: "가족의 알레르기", placeholder: "예: 페니실린, 해산물, 땅콩, 벌 알레르기", rows: 2 },
+          { key: "medicalDevices", type: "multichips", label: "의료기기 사용 여부", keyOptions: MEDICAL_DEVICE_OPTIONS },
+        ],
+      },
+      {
+        title: "응급 참고 정보",
+        fields: [
+          { key: "bloodType", type: "keychips", selfLabel: "내 혈액형", guardianLabel: "가족의 혈액형", keyOptions: BLOOD_TYPES },
+          { key: "hospitalName", type: "text", label: "주 이용 병원 또는 기관", placeholder: "예: ○○의원, ○○복지관" },
+          {
+            key: "emergencyMemo",
+            type: "textarea",
+            selfLabel: "내 응급 메모",
+            guardianLabel: "가족 응급 메모",
+            placeholder: "예: 더위에 취약함, 혼자 계실 때 전화 확인 필요, 계단 이동 어려움",
+            rows: 2,
+          },
+          {
+            key: "evacuationKit",
+            type: "textarea",
+            label: "대피 시 꼭 챙길 것",
+            placeholder: "예: 약 3일치, 처방전, 보청기, 안경, 휠체어 충전기, 반려동물 이동장",
+            rows: 2,
+          },
+        ],
       },
     ],
   },

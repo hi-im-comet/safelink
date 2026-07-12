@@ -3,16 +3,25 @@
 // 외부 API / LLM 키 없이 완전히 동작한다.
 import type { Grade, Hazard, RiskAssessment, UserMode, UserProfile } from "@/lib/types";
 import {
+  evacuationHelp,
+  hardToEvacuateAlone,
   hasCardioMetabolic,
   hasDisability,
   hasDiseases,
   hasEmergencyMemo,
   hasMedications,
   hasRespiratory,
+  hasStroke,
   healthSummaryFlags,
   healthTags,
+  needsColdStorage,
   needsCommunication,
   needsMobility,
+  needsPower,
+  prefersGuardianContact,
+  stairsDifficulty,
+  usesRespiratorySupport,
+  usesWheelchair,
 } from "@/lib/health";
 
 const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
@@ -374,66 +383,63 @@ function checklist(p: UserProfile, hazard: Hazard): string[] {
  * 선택입력 건강·응급 정보 가산 (입력된 경우에만 반영, 과도하게 오르지 않도록 상한)
  *   건강 취약(healthRisk)은 이미 vulnerability에 반영되어 여기서 중복 가산하지 않는다.
  * ──────────────────────────────────────────────────────────── */
-const HEALTH_BONUS_CAP = 30;
+const HEALTH_BONUS_CAP = 35;
 
 function healthAdjustment(p: UserProfile, hazard: Hazard): number {
   let b = 0;
-  // 공통
-  if (hasDisability(p)) b += 8;
-  if (needsMobility(p)) b += 10;
+  // 공통 (건강 취약(healthRisk)은 이미 vulnerability에 반영되어 중복 가산하지 않는다)
+  if (hasDisability(p)) b += 8; // 레거시
+  if (evacuationHelp(p)) b += 10; // 대피 시 도움 필요
+  if (hardToEvacuateAlone(p)) b += 10; // 혼자 대피 어려움
+  if (stairsDifficulty(p) || usesWheelchair(p)) b += 8; // 계단 이동 어려움/휠체어
   if (needsCommunication(p)) b += 6;
-  if (hasDiseases(p)) b += 8;
+  if (prefersGuardianContact(p)) b += 5; // 보호자 통해 연락
+  if (hasDiseases(p)) b += 5;
+  if (hasMedications(p)) b += 3;
   if (hasEmergencyMemo(p)) b += 3;
-  // 재난 유형별 추가
+  // 재난 유형별 특화 (재난과 관련 있는 질환·조건 +8~15)
   switch (hazard) {
     case "heat":
-      if (hasCardioMetabolic(p)) b += 8;
-      if (hasMedications(p)) b += 4;
+      if (hasCardioMetabolic(p)) b += 10;
+      if (needsColdStorage(p)) b += 5; // 냉장 보관 약 + 폭염/정전
       break;
     case "flood":
-      if (needsMobility(p)) b += 12;
-      if (hasDisability(p)) b += 8;
+      if (needsMobility(p)) b += 8;
+      if (hasStroke(p)) b += 8; // 뇌졸중·마비 후유증 → 대피 지연 위험
+      if (needsPower(p)) b += 5;
       break;
     case "cold":
-      if (hasCardioMetabolic(p)) b += 8;
+      if (hasCardioMetabolic(p)) b += 10;
+      if (needsColdStorage(p)) b += 5;
       break;
     case "dust":
       if (hasRespiratory(p)) b += 15;
+      if (usesRespiratorySupport(p)) b += 8; // 산소발생기/흡입기
       break;
     case "wind":
-      if (needsMobility(p)) b += 8;
-      if (needsCommunication(p)) b += 5;
+      if (needsPower(p)) b += 8; // 의료기기 전원 필요 + 정전 위험
+      if (needsColdStorage(p)) b += 5;
+      if (needsMobility(p)) b += 6;
       break;
   }
   return Math.min(b, HEALTH_BONUS_CAP);
 }
 
-// 건강·응급 정보가 있을 때 설명 문장에 덧붙이는 강화 문구 (입력된 경우에만)
+// 재난 유형별 "우선순위가 높아지는" 대응 (건강·응급 정보가 있을 때 홈 설명에 사용)
+const HOME_ACTION: Record<Hazard, string> = {
+  heat: "안부 확인",
+  flood: "대피 준비와 안부 확인",
+  cold: "안부 확인",
+  dust: "외출 자제 안내",
+  wind: "대피 준비와 안전 점검",
+};
+
+// 건강·응급 정보가 있을 때 설명 문장에 덧붙이는 문구 (입력된 실제 플래그 기반)
 function healthNote(p: UserProfile, hazard: Hazard): string {
-  switch (hazard) {
-    case "heat":
-      if (isElderly(p) && !p.hasAc && hasDiseases(p))
-        return " 고령·냉방 취약에 기저질환이 겹쳐 오늘은 특히 위험합니다. 수분을 자주 챙기고 시원한 곳을 이용하세요.";
-      break;
-    case "flood":
-      if (isLowFloor(p) && needsMobility(p))
-        return " 이동이 어려워 침수 시 대피가 늦어질 수 있으니 대피 경로와 도움 요청 방법을 미리 준비하세요.";
-      break;
-    case "cold":
-      if (p.heatingWeak && hasDiseases(p))
-        return " 난방 취약에 기저질환이 있어 실내 저체온에 특히 주의가 필요하고, 안부 확인이 권장됩니다.";
-      break;
-    case "dust":
-      if (isElderly(p) && hasRespiratory(p))
-        return " 고령·호흡기 질환으로 외출을 자제하고, 필요하면 마스크 지원을 요청하세요.";
-      if (hasRespiratory(p)) return " 호흡기 질환이 있어 외출을 줄이고 마스크 착용이 필요합니다.";
-      break;
-    case "wind":
-      if (p.hasPet) return " 반려동물과 함께 대피할 수 있도록 이동장·목줄을 미리 준비하세요.";
-      if (needsMobility(p)) return " 이동이 어려우면 무리한 외출을 피하고 도움을 요청하세요.";
-      break;
-  }
-  return "";
+  const tags = healthTags(p, hazard).filter((t) => t !== "응급정보 있음");
+  if (!tags.length) return "";
+  const top = tags.slice(0, 2).join(", ");
+  return ` 입력한 건강·응급 정보에 ${top} 정보가 있어 ${HAZARDS[hazard].label} 상황에서 ${HOME_ACTION[hazard]} 우선순위가 높아집니다.`;
 }
 
 /* ────────────────────────────────────────────────────────────
@@ -471,7 +477,9 @@ export function assessRisk(p: UserProfile, hazard: Hazard): RiskAssessment {
   const score = clamp(base * 0.4 + vuln * 0.6 + healthBonus);
   const grade = gradeOf(score);
   // 기본 취약 태그 + 건강·응급 태그 (입력된 경우에만)
-  const allTags = Array.from(new Set([...tags, ...healthTags(p)])).slice(0, 7);
+  // 건강 태그 최대 5개를 앞세우되, 재난 취약 태그도 남도록 8개로 제한한다.
+  const hTags = healthTags(p, hazard);
+  const allTags = Array.from(new Set([...hTags.slice(0, 5), ...tags, ...hTags.slice(5)])).slice(0, 8);
   return {
     hazard,
     score,
@@ -541,8 +549,8 @@ export function buildHelpMessage(
   const region = p.region || "우리 동네";
   const needs = requestTypes.length ? requestTypes.join(", ") : "안부 확인과 대피소 안내";
   const lowFloor = p.housing === "반지하" || p.housing === "1층";
-  // 문구에는 민감정보를 그대로 노출하지 않고 요약형 플래그만 담는다.
-  const flags = healthSummaryFlags(p);
+  // 문구에는 민감정보를 그대로 노출하지 않고 요약형 플래그만(최대 4개) 담는다.
+  const flags = healthSummaryFlags(p).slice(0, 4);
   if (mode === "guardian") {
     const who = p.name?.trim() ? p.name : "가족";
     const lines = [`안녕하세요. ${region}에 거주하는 ${who}의 보호자입니다. 현재 ${label} 위험이 높아 ${needs}이(가) 필요합니다.`];
@@ -551,7 +559,7 @@ export function buildHelpMessage(
   }
   const lines = [`안녕하세요. 저는 ${region} 거주자입니다. 현재 ${label} 위험이 높아 ${needs}이(가) 필요합니다.`];
   if (lowFloor) lines.push(`${p.housing}에 거주하고 있습니다.`);
-  if (flags.length) lines.push(`참고할 응급 정보로 ${flags.join(", ")}이(가) 있습니다.`);
+  if (flags.length) lines.push(`추가로 ${flags.join(", ")} 정보가 있습니다.`);
   return lines.join(" ");
 }
 

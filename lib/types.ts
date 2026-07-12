@@ -21,23 +21,61 @@ export type UserMode = "self" | "guardian";
  * 민감정보이므로 기본값은 미입력("" / []). 입력된 경우에만 위험도·문구에 반영된다.
  * localStorage에만 저장되고 서버로 전송되지 않는다.
  */
-export type DisabilityStatus = "none" | "yes" | "unknown" | ""; // "" = 입력 안 함
-export type TriState = "yes" | "no" | "unknown" | ""; // "" = 미입력
-export type BloodType = "A" | "B" | "O" | "AB" | "unknown" | ""; // "" = 입력 안 함
+export type DisabilityStatus = "none" | "yes" | "unknown" | ""; // "" = 입력 안 함 (레거시)
+export type TriState = "yes" | "no" | "unknown" | ""; // 필요/필요 없음/모름 · 있음/없음/모름 · 예/아니오/모름 공용, "" = 미입력
+export type BloodType =
+  | "A" | "B" | "O" | "AB"
+  | "A-" | "B-" | "O-" | "AB-" // Rh-
+  | "unknown" | ""; // "" = 입력 안 함
+export type MobilityStatus =
+  | "independent" // 독립 보행 가능
+  | "cane" // 지팡이/보행기
+  | "wheelchair" // 휠체어
+  | "stairs" // 계단 이동 어려움
+  | "bedridden" // 침상 생활
+  | "unknown" | ""; // "" = 입력 안 함
+export type CanEvacuate = "yes" | "hard" | "unknown" | ""; // 가능/어려움/모름
+export type ContactPreference = "phone" | "sms" | "guardian" | "visit" | "unknown" | ""; // 연락 선호 방식
+export type MedStorage = "none" | "fridge" | "power" | "unknown" | ""; // 약 보관 주의
 
 /** 선택입력 건강·응급 참고 정보 (사용자 프로필·시연 가구가 공유) */
 export interface HealthInfo {
-  disabilityStatus?: DisabilityStatus; // 장애 여부
-  disabilityDetail?: string; // 장애 또는 도움이 필요한 사항 상세
-  mobilitySupportNeeded?: TriState; // 이동 도움 필요
+  /* 레거시(이전 버전 저장값 호환) */
+  disabilityStatus?: DisabilityStatus;
+  disabilityDetail?: string;
+  mobilitySupportNeeded?: TriState; // 이전 "이동 도움 필요"
+
+  /* 1) 이동·대피 지원 */
+  mobilityStatus?: MobilityStatus; // 이동 상태
+  evacuationHelpNeeded?: TriState; // 대피 시 도움 필요
+  elevatorDependency?: TriState; // 엘리베이터 없으면 이동 어려움 (예/아니오/모름)
+  canEvacuateAlone?: CanEvacuate; // 혼자 대피 가능 여부
+  mobilityMemo?: string; // 이동 보조 상세 메모
+
+  /* 2) 의사소통·인지 지원 */
   communicationSupportNeeded?: TriState; // 의사소통 도움 필요
+  contactPreference?: ContactPreference; // 연락 선호 방식
+  sensorySupport?: string[]; // 감각·소통 지원 (키 배열)
+  communicationMemo?: string; // 의사소통 메모
+
+  /* 3) 주요 질환·건강 상태 */
   chronicDiseases?: string[]; // 주요 질환 (키 배열)
-  diseaseDetail?: string; // 질환 상세
-  medications?: string; // 복용약
-  allergies?: string; // 알레르기
+  diseaseDetail?: string; // 질환 상세 메모
+  recentSymptoms?: string[]; // 최근 주의 증상 (키 배열)
+
+  /* 4) 복용약·알레르기 */
+  medicationStatus?: TriState; // 복용약 있음 여부 (있음/없음/모름)
+  medications?: string; // 복용약 메모
+  medStorage?: MedStorage; // 약 보관 주의
+  allergyStatus?: TriState; // 알레르기 있음 여부 (있음/없음/모름)
+  allergies?: string; // 알레르기 메모
+  medicalDevices?: string[]; // 의료기기 사용 (키 배열)
+
+  /* 5) 응급 참고 정보 */
   bloodType?: BloodType; // 혈액형
   hospitalName?: string; // 주 이용 병원 또는 기관
-  emergencyMemo?: string; // 응급 메모
+  emergencyMemo?: string; // 응급 연락 메모
+  evacuationKit?: string; // 대피 시 꼭 챙길 것
 }
 
 /**

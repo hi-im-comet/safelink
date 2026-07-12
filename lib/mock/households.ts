@@ -21,8 +21,10 @@ export const demoHouseholds: Household[] = [
     ageBand: "70대", housingType: "반지하", householdType: "독거 고령자",
     alone: true, healthRisk: true, hasCar: false, hasPet: false, guardianNeeded: true,
     health: {
-      disabilityStatus: "yes", mobilitySupportNeeded: "yes", chronicDiseases: ["hypertension"],
-      medications: "혈압약", bloodType: "B", hospitalName: "햇살의원",
+      mobilityStatus: "stairs", evacuationHelpNeeded: "yes", canEvacuateAlone: "hard", elevatorDependency: "yes",
+      contactPreference: "guardian",
+      chronicDiseases: ["hypertension"], medicationStatus: "yes", medications: "혈압약",
+      bloodType: "B", hospitalName: "햇살의원", evacuationKit: "약 3일치, 처방전",
       emergencyMemo: "혼자 계실 때 전화 확인 필요, 계단 이동 어려움",
     },
   },
@@ -115,8 +117,12 @@ export const demoHouseholds: Household[] = [
     ageBand: "80대", housingType: "노후주택", householdType: "독거 고령자",
     alone: true, healthRisk: true, hasCar: false, hasPet: false, guardianNeeded: true,
     health: {
-      chronicDiseases: ["hypertension", "diabetes"], medications: "혈압약, 당뇨약",
-      mobilitySupportNeeded: "yes", bloodType: "O", emergencyMemo: "난방 약할 때 안부 확인 필요",
+      mobilityStatus: "cane", evacuationHelpNeeded: "yes", canEvacuateAlone: "hard",
+      contactPreference: "guardian",
+      chronicDiseases: ["hypertension", "diabetes"], recentSymptoms: ["hypoglycemia"],
+      medicationStatus: "yes", medications: "혈압약, 당뇨약", medStorage: "fridge",
+      bloodType: "O", hospitalName: "별하동 내과", evacuationKit: "약 3일치, 혈당측정기",
+      emergencyMemo: "난방 약할 때 안부 확인 필요",
     },
   },
   {
@@ -165,7 +171,10 @@ export const demoHouseholds: Household[] = [
     ageBand: "60대", housingType: "아파트", householdType: "호흡기 취약 가구",
     alone: false, healthRisk: true, hasCar: false, hasPet: false, guardianNeeded: true,
     health: {
-      chronicDiseases: ["respiratory"], medications: "천식 흡입제", allergies: "꽃가루",
+      mobilityStatus: "independent",
+      chronicDiseases: ["respiratory"], recentSymptoms: ["dyspnea"],
+      medicationStatus: "yes", medications: "천식 흡입제", allergyStatus: "yes", allergies: "꽃가루",
+      medicalDevices: ["inhaler", "oxygen"], medStorage: "power",
       bloodType: "A", hospitalName: "푸른숨내과", emergencyMemo: "미세먼지 나쁨 시 외출 자제 필요",
     },
   },
@@ -211,8 +220,10 @@ export const demoHouseholds: Household[] = [
     ageBand: "70대", housingType: "노후주택", householdType: "고령 가구",
     alone: false, healthRisk: false, hasCar: false, hasPet: false, guardianNeeded: true,
     health: {
-      mobilitySupportNeeded: "yes", communicationSupportNeeded: "unknown",
-      chronicDiseases: ["hypertension"], emergencyMemo: "강풍·낙하물 위험 시 외출 자제",
+      mobilityStatus: "stairs", evacuationHelpNeeded: "yes",
+      communicationSupportNeeded: "unknown", contactPreference: "visit",
+      chronicDiseases: ["hypertension"], medicalDevices: ["oxygen"], medStorage: "power",
+      emergencyMemo: "강풍·낙하물 위험 시 외출 자제, 산소발생기 전원 확보 필요",
     },
   },
   {
